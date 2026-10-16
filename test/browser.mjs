@@ -66,7 +66,12 @@ async function measureSide(page, lesson, rect, axis, { manual = true, touch = fa
   }
   await page.locator('#length-answer').fill(String(value));
   await page.locator('#measurement-form button').click();
-  assert.equal(await page.locator('#feedback').textContent(), '', `Measurement ${axis} ${value} recorded`);
+  const feedback = await page.locator('#feedback').textContent();
+  if (feedback) {
+    await page.screenshot({ path: 'test-results/measurement-failure.png', fullPage: true });
+    console.log('Measurement state:', await page.locator('#board-desc').textContent(), await page.locator('[data-drag="zero"]').getAttribute('aria-label'), await page.locator('[data-drag="marker"]').getAttribute('aria-valuenow'));
+  }
+  assert.equal(feedback, '', `Measurement ${axis} ${value} recorded`);
 }
 async function finishCalculations(page, lesson, plan) {
   for (const [i,rect] of plan.rects.entries()) await page.locator(`#area-${i}`).fill(String(rect.w*rect.h));
@@ -80,6 +85,7 @@ async function finishCalculations(page, lesson, plan) {
 }
 
 try {
+  if (!process.env.MOBILE_ONLY) {
   await page.goto(url);
   assert.match(await page.title(), /Area Workshop/);
   await page.locator('[data-cell="0-0"]').click();
@@ -159,6 +165,7 @@ try {
   await page.keyboard.press('Enter');
   assert.equal(await page.locator('#begin-measuring').isEnabled(),true);
   console.log('PASS: keyboard-only independent cut');
+  }
 
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
   const mobile = await mobileContext.newPage();
