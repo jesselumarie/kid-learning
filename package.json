@@ -8,7 +8,7 @@
     "start": "node scripts/serve.mjs",
     "test": "node --test test/*.test.js",
     "test:browser": "node test/browser.mjs",
-    "check": "node --check site/app.js && node --check site/math.js && node --check site/lessons.js && npm test"
+    "check": "node --check site/third-grade/area/app.js && node --check site/third-grade/area/math.js && node --check site/third-grade/area/lessons.js && npm test"
   },
   "engines": {
     "node": ">=22"

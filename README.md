@@ -2,7 +2,9 @@
 
 Area practice with a draggable ruler, shape splits, recorded measurements, and area calculations. The final problem has a scratchpad and a final-answer field.
 
-**Site:** [jesselumarie.github.io/kid-learning](https://jesselumarie.github.io/kid-learning/)
+**Site:** [Third grade: Area practice](https://jesselumarie.github.io/kid-learning/third-grade/area/)
+
+The lesson lives at `/third-grade/area/` within the GitHub Pages project. The project homepage redirects there. Existing progress stays on the same device.
 
 ## Run locally
 
@@ -12,7 +14,7 @@ Use Node.js 22 or newer. No dependency installation or build step is needed.
 npm start
 ```
 
-Open [localhost:4173](http://127.0.0.1:4173). Use `PORT=4174 npm start` to choose another port.
+Open [the area lesson](http://127.0.0.1:4173/third-grade/area/). Use `PORT=4174 npm start` to choose another port.
 
 ```sh
 npm test       # Mathematics and lesson validation
@@ -60,7 +62,7 @@ Progress and final-problem work are stored only in this browser’s `localStorag
 
 In the repository’s **Settings → Pages**, select **GitHub Actions** as the source. The workflow checks JavaScript and lesson mathematics on pull requests. A successful push to `main`, or a manual workflow run on `main`, publishes only `site/`. Pull requests do not deploy.
 
-`site/lessons.js` contains the curriculum. `site/math.js` validates measurements, areas, units, explanations, and exact rectangle coverage. `site/app.js` handles the interactive activity.
+`site/third-grade/area/lessons.js` contains the curriculum. `site/third-grade/area/math.js` validates measurements, areas, units, explanations, and exact rectangle coverage. `site/third-grade/area/app.js` handles the interactive activity.
 
 ## Manual QA
 
@@ -71,4 +73,4 @@ In the repository’s **Settings → Pages**, select **GitHub Actions** as the s
 - Reload after progress, revisit a completed lesson, and test the reset control.
 - Write on the final scratchpad, erase and undo, resize, reload, and submit a final answer with square units.
 - Check a narrow phone viewport, touch input, visible keyboard focus, and reduced motion.
-- Open the deployed project URL and confirm all relative assets load under `/kid-learning/`.
+- Open the deployed lesson directly at `/kid-learning/third-grade/area/`, and check that the project homepage redirects there.

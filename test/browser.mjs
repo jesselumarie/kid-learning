@@ -2,12 +2,13 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
-import { LESSONS } from '../site/lessons.js';
-import { polygonArea, splitFromCuts } from '../site/math.js';
+import { LESSONS } from '../site/third-grade/area/lessons.js';
+import { polygonArea, splitFromCuts } from '../site/third-grade/area/math.js';
 
 const port = 4199;
 const external = process.env.TEST_URL;
-const url = external || `http://127.0.0.1:${port}`;
+const rootUrl = external || `http://127.0.0.1:${port}`;
+const url = `${rootUrl.replace(/\/$/,'')}/third-grade/area/`;
 const server = external ? null : spawn(process.execPath, ['scripts/serve.mjs'], { env: { ...process.env, PORT: String(port) }, stdio: 'pipe' });
 if (server) await new Promise((resolve, reject) => { server.stdout.once('data', resolve); server.once('error', reject); server.once('exit', code => { if (code) reject(new Error(`Server exited ${code}`)); }); });
 await mkdir('test-results', { recursive: true });
@@ -141,7 +142,11 @@ async function drawOnScratchpad(page, touch = false) {
 
 try {
   if (!process.env.MOBILE_ONLY) {
-  await page.goto(url);
+  await page.goto(rootUrl);
+  await page.waitForURL('**/third-grade/area/',{timeout:3000});
+  assert.ok(page.url().endsWith('/third-grade/area/'),'The old homepage opens the named third-grade lesson');
+  await page.goto(url.replace(/\/$/,''));
+  assert.ok(page.url().endsWith('/third-grade/area/'),'Direct lesson links normalize their trailing slash');
   assert.match(await page.title(), /Area practice/);
   await page.locator('[data-cell="0-0"]').click();
   assert.match(await page.locator('#board-caption').textContent(), /1 square marked/);

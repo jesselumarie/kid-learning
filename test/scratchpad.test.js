@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mountScratchpad, normalizeStrokes, hasScratchInk } from '../site/scratchpad.js';
+import { mountScratchpad, normalizeStrokes, hasScratchInk } from '../site/third-grade/area/scratchpad.js';
 
 function fixture() {
   const targets = new Map();

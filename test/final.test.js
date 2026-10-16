@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { LESSONS } from '../site/lessons.js';
-import { evaluateFinal } from '../site/math.js';
+import { LESSONS } from '../site/third-grade/area/lessons.js';
+import { evaluateFinal } from '../site/third-grade/area/math.js';
 
 const lesson = LESSONS.at(-1);
 test('final problem requires written work, the correct total, and square units', () => {

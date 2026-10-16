@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { LESSONS } from '../site/lessons.js';
-import { polygonArea, rectangleArea, splitIsValid, splitFromCuts, measure, checkNumber, evaluateWork } from '../site/math.js';
+import { LESSONS } from '../site/third-grade/area/lessons.js';
+import { polygonArea, rectangleArea, splitIsValid, splitFromCuts, measure, checkNumber, evaluateWork } from '../site/third-grade/area/math.js';
 
 const correctWork = (lesson, split = lesson.splits[0]) => ({
   measurements: split.rects.map(rect => ({ w: String(rect.w), h: String(rect.h) })),
