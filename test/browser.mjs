@@ -94,6 +94,10 @@ async function measureSide(page, lesson, rect, axis, { manual = true, touch = fa
       await page.waitForFunction(expected => Number(document.querySelector('#ruler-value').textContent.split(' ')[0]) === expected, current + (current < value ? 1 : -1));
     }
   }
+  if (touch) {
+    await touchTap(page,page.locator('#length-answer'));
+    await page.waitForFunction(() => document.activeElement?.id === 'length-answer',null,{ timeout: 3000 });
+  }
   await page.locator('#length-answer').fill(String(value));
   if (touch) await touchTap(page,page.locator('#measurement-form button')); else await page.locator('#measurement-form button').click();
   await page.waitForFunction(() => !document.querySelector('#length-answer') || document.querySelector('#length-answer').value === '' || document.querySelector('#feedback').textContent !== '');
@@ -205,9 +209,9 @@ try {
   await mobile.goto(url);
   await mobile.evaluate(() => {
     window.touchTrace = [];
-    for (const type of ['touchstart','touchend','pointercancel','click']) document.addEventListener(type,event => {
-      window.touchTrace.push({ type, target: event.target.closest('button')?.id || event.target.tagName, time: Math.round(performance.now()), scrollY });
-      if (window.touchTrace.length > 40) window.touchTrace.shift();
+    for (const type of ['touchstart','touchend','touchcancel','pointerdown','pointerup','pointercancel','gotpointercapture','lostpointercapture','mousedown','mouseup','click','focusin']) document.addEventListener(type,event => {
+      window.touchTrace.push({ type, target: event.target.closest('button')?.id || event.target.id || event.target.tagName, pointerId:event.pointerId, time: Math.round(performance.now()), scrollY });
+      if (window.touchTrace.length > 60) window.touchTrace.shift();
     },true);
   });
   await touchTap(mobile,mobile.locator('[data-lesson="10"]'));
