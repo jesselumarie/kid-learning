@@ -3,12 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "A hands-on area workshop for curious kids.",
+  "description": "Interactive third-grade math chapters with place-value blocks, area practice, and written work.",
   "scripts": {
     "start": "node scripts/serve.mjs",
     "test": "node --test test/*.test.js",
-    "test:browser": "node test/browser.mjs",
-    "check": "node --check site/third-grade/area/app.js && node --check site/third-grade/area/math.js && node --check site/third-grade/area/lessons.js && npm test"
+    "test:browser": "node test/browser.mjs && node test/arithmetic-browser.mjs",
+    "test:arithmetic-browser": "node test/arithmetic-browser.mjs",
+    "check": "node --check site/third-grade/area/app.js && node --check site/third-grade/area/math.js && node --check site/third-grade/area/lessons.js && node --check site/third-grade/addition-subtraction/app.js && node --check site/third-grade/addition-subtraction/math.js && node --check site/third-grade/addition-subtraction/lessons.js && npm test"
   },
   "engines": {
     "node": ">=22"

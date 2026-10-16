@@ -145,8 +145,11 @@ async function drawOnScratchpad(page, touch = false) {
 try {
   if (!process.env.MOBILE_ONLY) {
   await page.goto(rootUrl);
+  await page.locator('[data-chapter="area"]').click();
   await page.waitForURL('**/third-grade/area/',{timeout:3000});
-  assert.ok(page.url().endsWith('/third-grade/area/'),'The old homepage opens the named third-grade lesson');
+  assert.equal(await page.locator('.brand').getAttribute('href'),'../../','The area chapter links back to the contents');
+  await page.locator('.brand').click();
+  assert.equal(await page.locator('[data-chapter="addition-subtraction"]').count(),1,'Both chapters are reachable from area practice');
   await page.goto(url.replace(/\/$/,''));
   assert.ok(page.url().endsWith('/third-grade/area/'),'Direct lesson links normalize their trailing slash');
   assert.match(await page.title(), /Area practice/);

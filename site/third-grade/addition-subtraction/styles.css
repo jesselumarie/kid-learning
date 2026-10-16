@@ -1,0 +1,89 @@
+.journey h1 { font-size: 29px; letter-spacing: -1px; }
+.contents-link { display: inline-block; padding: 15px 0; font-size: 12px; color: var(--green); text-underline-offset: 4px; }
+.model-key { font-size: 11px; color: var(--muted); text-transform: none; letter-spacing: 0; }
+.model-problem { padding: 24px 20px 18px; text-align: center; font-size: 32px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.place-blocks { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); padding: 0 12px; }
+.place-column { padding: 12px 5px; min-width: 0; border: 1px solid #dce1d3; background: #fafbf5; text-align: center; display: flex; flex-direction: column; }
+.place-column + .place-column { border-left: 0; }
+.place-column.active-place { box-shadow: inset 0 4px var(--green); background: #eff5ea; }
+.place-column.drag-target { outline: 3px dashed var(--green); outline-offset: -4px; background: #e1eedc; }
+.place-column h3 { font-size: 12px; margin-bottom: 12px; }
+.block-count { font-size: 25px; line-height: 1.2; font-weight: 750; color: var(--green); font-variant-numeric: tabular-nums; }
+.block-caption { font-size: 11px; color: var(--muted); min-height: 32px; margin: 5px 0 8px; }
+.block-group { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; align-content: flex-start; min-height: 138px; padding: 6px 0 10px; }
+.place-token { display: block; width: 27px; height: 29px; flex: 0 0 27px; }
+.place-token.second-group { opacity: .65; }
+.place-token.ones { width: 17px; height: 17px; flex-basis: 17px; margin: 3px; }
+.place-token.tens { width: 12px; height: 42px; flex-basis: 12px; }
+.place-token.thousands { height: 34px; }
+.exchange-button { width: 100%; min-height: 64px; padding: 7px 3px; margin-top: auto; border: 1px solid #b7c8b2; border-radius: 6px; font-size: 11px; line-height: 1.5; background: #fffdf3; color: #295b4d; cursor: grab; touch-action: pan-y; }
+.exchange-button:disabled { opacity: .45; cursor: default; }
+.exchange-button:not(:disabled):hover { border-color: var(--green); background: #e5efde; }
+.exchange-button.dragging { border: 2px solid var(--green); cursor: grabbing; }
+.model-actions { padding: 16px 18px 0; }
+.model-actions button { width: 100%; min-height: 46px; }
+.model-caption { min-height: 40px; margin: 15px 19px 0; font-size: 14px; line-height: 1.6; color: #3a5f4d; }
+.exchange-log { margin: 10px 19px 16px; padding-left: 21px; color: #526650; font-size: 12px; line-height: 1.8; }
+.exchange-log:empty { display: none; }
+.model-instruction { margin: 0 19px 18px; color: var(--muted); font-size: 11px; line-height: 1.7; }
+.written-sum { display: grid; gap: 0; grid-template-columns: 24px repeat(var(--places),minmax(44px,1fr)); margin: 24px 0 18px; max-width: 390px; font-variant-numeric: tabular-nums; }
+.written-sum .place-label { font-size: 10px; text-align: center; font-weight: 650; padding-bottom: 10px; color: var(--muted); }
+.written-sum .sum-digit { font-size: 29px; text-align: center; padding: 4px 0; }
+.written-sum .sum-operator { align-self: center; font-size: 23px; color: var(--green); }
+.written-sum .sum-line { grid-column: 1/-1; border-top: 2px solid #70836c; margin: 7px 0 10px; }
+.written-sum .answer-input { width: calc(100% - 8px); min-width: 0; margin: 0 4px; padding: 9px 2px; text-align: center; }
+.independent-workbench { grid-template-columns: minmax(0,1fr); }
+.independent-workbench .notebook { max-width: 920px; width: 100%; }
+.independent-workbench #model-card { max-width: 920px; width: 100%; }
+.independent-workbench #task-panel { max-width: none; }
+.independent-layout { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(230px,.7fr); gap: 24px; }
+.independent-layout > * { min-width: 0; }
+.independent-layout .task-description { font-size: 14px; }
+.independent-answers { padding-top: 8px; }
+.independent-answers .answer-input { width: 100%; margin-bottom: 18px; }
+.operation-choice { border: 0; padding: 0; margin: 14px 0; }
+.operation-choice legend { font-size: 12px; font-weight: 700; margin-bottom: 9px; }
+.operation-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.operation-options label { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 10px; border: 1px solid #cad6c2; border-radius: 7px; font-size: 13px; }
+.operation-options input { accent-color: var(--green); }
+.practice-problems { margin: 15px 0; padding-left: 25px; font-size: 23px; font-weight: 650; line-height: 1.8; font-variant-numeric: tabular-nums; }
+.result-answer { margin: 15px 0; font-size: 24px; color: var(--green); font-weight: 750; }
+.completion-actions { display: grid; gap: 10px; margin-top: 20px; }
+.completion-actions #show-grade-sheet { margin-bottom: 0; }
+.completed-work-note { font-size: 13px; line-height: 1.7; color: var(--muted); }
+.chapter-save-note { font-size: 11px; color: var(--muted); line-height: 1.6; margin-top: 15px; }
+.grade-calculations { margin: 13px 0 24px; }
+.grade-problem-line { font-size: 17px; font-weight: 700; margin: 10px 0; }
+.grade-work-layout { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+.grade-work-layout:has(> :only-child) { grid-template-columns: minmax(0,1fr); }
+@media(max-width:1250px) { .journey h1 { font-size: 26px; } .block-group { min-height: 160px; } .place-token { width: 24px; flex-basis: 24px; } }
+@media(max-width:1050px) { .place-column { padding: 13px 10px; } .block-group { min-height: 100px; } .independent-layout { grid-template-columns: minmax(0,1fr) minmax(220px,.8fr); } }
+@media(max-width:680px) {
+  .lesson-link { width: 44px; height: 44px; min-width: 44px; min-height: 44px; flex-basis: 44px; }
+  .journey .contents-link { display: none; }
+  .model-key { display: none; }
+  .model-problem { font-size: 28px; padding: 20px 12px; }
+  .place-blocks { padding: 0 8px; }
+  .place-column { padding: 12px 4px; }
+  .place-column h3 { font-size: 12px; }
+  .block-count { font-size: 23px; }
+  .block-caption { font-size: 10px; min-height: 40px; }
+  .block-group { min-height: 150px; }
+  .place-token { width: 24px; flex-basis: 24px; }
+  .place-token.ones { width: 15px; height: 15px; flex-basis: 15px; margin: 1px; }
+  .place-token.tens { width: 10px; flex-basis: 10px; }
+  .exchange-button { min-height: 74px; font-size: 11px; }
+  .model-caption { font-size: 13px; margin-left: 15px; margin-right: 15px; }
+  .model-instruction { font-size: 11px; }
+  .written-sum { grid-template-columns: 20px repeat(var(--places),minmax(40px,1fr)); }
+  .written-sum .place-label { font-size: 9px; }
+  .independent-layout { grid-template-columns: minmax(0,1fr); gap: 15px; }
+  .grade-work-layout { grid-template-columns: minmax(0,1fr); }
+}
+@media print {
+  #grade-sheet .grade-section[aria-labelledby="grade-written-title"] { break-before: page; border: 0; padding-top: 0; margin-top: 0; }
+  .grade-calculations { break-inside: avoid; }
+  .grade-problem-line { font-size: 11pt; }
+  .grade-work-layout { margin-top: 7pt; gap: 12pt; }
+  .grade-work-layout .grade-drawing { max-height: 42mm; }
+}

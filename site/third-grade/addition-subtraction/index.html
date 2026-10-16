@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f4ec">
+  <meta name="description" content="Add and subtract with place-value blocks, exchange hundreds, tens, and ones, and solve problems through the thousands.">
+  <title>Addition and subtraction · Kid Learning</title>
+  <link rel="icon" type="image/svg+xml" href="../area/favicon.svg">
+  <link rel="stylesheet" href="../area/styles.css">
+  <link rel="stylesheet" href="../area/report.css">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#workspace">Skip to the activity</a>
+  <header class="site-header">
+    <a id="contents" class="brand" href="../../" aria-label="Kid Learning table of contents"><svg viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="14" height="14" rx="3" fill="#32766c"/><rect x="19" y="1" width="14" height="14" rx="3" fill="#efb84c"/><rect x="1" y="19" width="14" height="14" rx="3" fill="#e68770"/><rect x="19" y="19" width="14" height="14" rx="3" fill="#e8e8dc"/></svg>Kid Learning</a>
+    <div class="header-actions"><button id="view-grade-sheet" class="text-button">Grade sheet</button><button id="grownups" class="text-button">For parents <span aria-hidden="true">↗</span></button></div>
+  </header>
+  <div id="activity-shell" class="app-shell">
+    <aside class="journey" aria-label="Lessons">
+      <div class="eyebrow">THIRD GRADE</div>
+      <h1>Addition &amp; <span>subtraction</span></h1>
+      <p class="journey-intro">Ones, tens, hundreds, and thousands.</p>
+      <div class="journey-progress"><div><strong id="progress-text">0 of 16 complete</strong><span id="progress-percent">0%</span></div><div class="progress-track"><div id="progress-fill"></div></div></div>
+      <nav id="lesson-nav" aria-label="Choose a lesson"></nav>
+      <a class="contents-link" href="../../">← Table of contents</a>
+    </aside>
+    <main id="workspace" tabindex="-1">
+      <div class="lesson-heading"><div><div class="eyebrow" id="lesson-meta"></div><h2 id="lesson-title" tabindex="-1"></h2><p id="lesson-prompt"></p></div><span class="lesson-badge" id="lesson-badge"></span></div>
+      <div id="arithmetic-workbench" class="workbench">
+        <section id="model-card" class="drawing-card" aria-labelledby="model-title">
+          <div class="board-header"><span id="model-title">PLACE VALUE</span><span class="model-key">Each block keeps its value.</span></div>
+          <div id="model-problem" class="model-problem"></div>
+          <div id="place-blocks" class="place-blocks"></div>
+          <div id="model-actions" class="model-actions"></div>
+          <p id="model-caption" class="model-caption" role="status" aria-live="polite"></p>
+          <ol id="exchange-log" class="exchange-log" aria-label="Calculation steps"></ol>
+          <p class="model-instruction">Tap an exchange button, or drag it into the neighboring place.</p>
+        </section>
+        <section class="notebook" aria-labelledby="notebook-title">
+          <div class="notebook-label"><span class="notebook-icon" aria-hidden="true">▤</span> YOUR WORK <span id="note-count"></span></div>
+          <div id="task-panel"></div>
+          <div id="feedback" role="status" aria-live="polite"></div>
+          <div class="hint-wrap"><button id="hint-button" class="text-button">Show a hint</button><p id="hint-text" role="status" aria-live="polite"></p></div>
+        </section>
+      </div>
+      <div class="bottom-note"><p id="big-idea">Ten ones have the same value as one ten.</p><button id="restart-lesson" class="text-button">Start this lesson again</button></div>
+    </main>
+  </div>
+  <section id="grade-sheet" aria-labelledby="grade-sheet-title" hidden></section>
+  <dialog id="parent-dialog"><button class="dialog-close" aria-label="Close parent guide">×</button><div class="eyebrow">FOR PARENTS</div><h2>Addition and subtraction</h2><p>Start with ones and work left. Ten ones equal one ten, ten tens equal one hundred, and ten hundreds equal one thousand. Exchanging blocks changes how a number is grouped, while keeping its value.</p><p>For addition, combine the two groups and exchange any group of ten. For subtraction, exchange a larger block when there are not enough smaller blocks to take away. Numbers with zeros may need several exchanges.</p><p>The first 13 lessons use blocks and aligned answer columns. The last three require your child’s own written calculations. Optional blocks and hints count as help. The app checks answers and operation choices; please review the written calculations on the grade sheet.</p><div id="parent-progress"></div><p class="small-print">This chapter’s progress and work stay in this browser on this device. Nothing is uploaded. Resetting this chapter does not erase area practice.</p><button id="reset-progress" class="secondary-button">Reset this chapter</button><p id="reset-status" role="status"></p></dialog>
+  <noscript>These activities need JavaScript for the blocks and lessons. Please enable JavaScript in your browser.</noscript>
+</body>
+</html>
