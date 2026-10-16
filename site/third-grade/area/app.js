@@ -8,8 +8,8 @@ const colors = ['#b5d3bb', '#f0cc82', '#e8ac98', '#b6cddd', '#d4bfdc', '#cad89a'
 const chapterNames = ['Rectangles', 'Split shapes', 'More practice', 'Independent work'];
 const RULER_UNITS = 15;
 const UNIT_SIZE = 28;
-const BOARD_WIDTH = 900;
-const BOARD_HEIGHT = 760;
+const BOARD_WIDTH = 750;
+const BOARD_HEIGHT = 630;
 const storageKey = 'kid-learning-area-v1';
 let storageAvailable = true;
 let progress = { current: 0, completed: {}, draft: null };
@@ -52,8 +52,7 @@ function startLesson(next, focus = false) {
   };
   const width = Math.max(...lesson.polygon.map(p => p[0]));
   const height = Math.max(...lesson.polygon.map(p => p[1]));
-  layout = { scale: UNIT_SIZE, x: (BOARD_WIDTH-(width+RULER_UNITS)*UNIT_SIZE)/2, y: (BOARD_HEIGHT-(height+RULER_UNITS)*UNIT_SIZE)/2 };
-  board.setAttribute('viewBox',`0 0 ${BOARD_WIDTH} ${BOARD_HEIGHT}`);
+  layout = { scale: UNIT_SIZE, x: Math.max(isFinal() ? 75 : 30,(BOARD_WIDTH-(width+RULER_UNITS)*UNIT_SIZE)/2), y: Math.max(isFinal() ? 50 : 30,(BOARD_HEIGHT-(height+RULER_UNITS)*UNIT_SIZE)/2), viewX:0, viewY:0 };
   if (isFinal()) {
     state.ruler.y = height+2;
     state.work.total = typeof progress.draft?.total === 'string' ? progress.draft.total : '';
@@ -117,6 +116,8 @@ function target() {
 }
 
 function renderBoard() {
+  if (state.phase !== 'measure') {layout.viewX=0;layout.viewY=0;}
+  board.setAttribute('viewBox',`${layout.viewX} ${layout.viewY} ${BOARD_WIDTH} ${BOARD_HEIGHT}`);
   const active = state.phase === 'measure' ? target() : null;
   const showParts = state.splitIndex >= 0;
   const boundary = `Coordinates count ${lesson.unit} across, then down from the top-left origin. The shape boundary joins these corners in order and returns to the start: ${lesson.polygon.map(([x,y]) => `(${x}, ${y})`).join('; ')}.`;
@@ -280,19 +281,25 @@ function renderTask() {
 
 function resetRuler() {
   const t = target();
+  const [x,y] = xy(t.a);
+  // Move the view for far-edge custom rectangles without changing its scale.
+  layout.viewX = t.axis === 'w' ? Math.max(0,x+RULER_UNITS*UNIT_SIZE+16-BOARD_WIDTH) : 0;
+  layout.viewY = t.axis === 'h' ? Math.max(0,y+RULER_UNITS*UNIT_SIZE+16-BOARD_HEIGHT) : 0;
   state.ruler = { x: t.a[0], y: t.a[1]+2, vertical: false, value: 2 };
   fitRuler();
 }
 
 function fitRuler() {
   const r = state.ruler;
+  // In the final problem, keep zero reachable across the whole shape;
+  // the unused end of the free ruler can extend beyond the diagram.
   const height = window.innerWidth <= 680 ? 80 : 44;
   const px = layout.x+r.x*layout.scale;
   const py = layout.y+r.y*layout.scale;
-  const minX = 25;
-  const maxX = r.vertical ? BOARD_WIDTH-(window.innerWidth<=680 ? 144 : height+32)-25 : BOARD_WIDTH-RULER_UNITS*UNIT_SIZE-25;
-  const minY = 25;
-  const maxY = r.vertical ? BOARD_HEIGHT-RULER_UNITS*UNIT_SIZE-25 : BOARD_HEIGHT-(window.innerWidth<=680 ? 144 : height+32)-25;
+  const minX = layout.viewX+25;
+  const maxX = layout.viewX+(isFinal() ? BOARD_WIDTH-25 : r.vertical ? BOARD_WIDTH-(window.innerWidth<=680 ? 144 : height+32)-25 : BOARD_WIDTH-RULER_UNITS*UNIT_SIZE-16);
+  const minY = layout.viewY+25;
+  const maxY = layout.viewY+(isFinal() ? BOARD_HEIGHT-25 : r.vertical ? BOARD_HEIGHT-RULER_UNITS*UNIT_SIZE-16 : BOARD_HEIGHT-(window.innerWidth<=680 ? 144 : height+32)-25);
   r.x = (Math.max(minX,Math.min(maxX,px))-layout.x)/layout.scale;
   r.y = (Math.max(minY,Math.min(maxY,py))-layout.y)/layout.scale;
 }

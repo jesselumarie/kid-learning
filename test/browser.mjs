@@ -148,6 +148,7 @@ try {
   await page.goto(url.replace(/\/$/,''));
   assert.ok(page.url().endsWith('/third-grade/area/'),'Direct lesson links normalize their trailing slash');
   assert.match(await page.title(), /Area practice/);
+  assert.ok((await page.locator('.shape-stroke').boundingBox()).width >= 92,'Desktop rectangle is large enough to see');
   await page.locator('[data-cell="0-0"]').click();
   assert.match(await page.locator('#board-caption').textContent(), /1 square marked/);
   await page.locator('[data-cell="0-0"]').click();
@@ -197,6 +198,9 @@ try {
   for (let i = 1; i < LESSONS.length; i++) {
     const lesson = LESSONS[i];
     await page.locator(`[data-lesson="${i}"]`).click();
+    const shapeBox = await page.locator('.shape-stroke').boundingBox();
+    const boardBox = await page.locator('#board').boundingBox();
+    assert.ok(shapeBox.x >= boardBox.x && shapeBox.y >= boardBox.y && shapeBox.x+shapeBox.width <= boardBox.x+boardBox.width && shapeBox.y+shapeBox.height <= boardBox.y+boardBox.height,`Shape ${i+1} fits within the diagram`);
     if (lesson.final) {
       assert.equal(await page.locator('#stepper').isVisible(),false);
       assert.equal(await page.locator('#area-form, #total-form, #reason-form, .equation, .sum-block').count(),0,'Final problem has no filled-in calculations');
@@ -221,6 +225,10 @@ try {
         const lines = [[[6,4],[0,4]],[[3,2],[3,4]]];
         await drawCuts(page,lesson,lines);
         plan = { rects: splitFromCuts(lesson.polygon,lines).rects };
+      } else if (i === 10) {
+        const lines = [[[12,0],[12,10]],[[10,5],[10,10]]];
+        await drawCuts(page,lesson,lines);
+        plan = {rects:splitFromCuts(lesson.polygon,lines).rects};
       } else if (lesson.independent) {
         await drawCuts(page,lesson,plan.lines);
         plan = { ...plan, rects: splitFromCuts(lesson.polygon,plan.lines).rects };
@@ -239,6 +247,16 @@ try {
   assert.match(await page.locator('#parent-progress').textContent(), /3 of 3 independent problems completed without help/);
   await page.locator('.dialog-close').click();
   await page.screenshot({ path: 'test-results/completed.png', fullPage: true });
+
+  // A lower custom rectangle also needs room for the vertical ruler.
+  await page.locator('[data-lesson="10"]').click();
+  const lowerCuts = [[[0,6],[15,6]],[[10,5],[10,6]]];
+  await drawCuts(page,LESSONS[10],lowerCuts);
+  const lowerPlan = {rects:splitFromCuts(LESSONS[10].polygon,lowerCuts).rects};
+  await page.locator('#begin-measuring').click();
+  for (const rect of lowerPlan.rects) for (const axis of ['w','h']) await measureSide(page,LESSONS[10],rect,axis);
+  await finishCalculations(page,LESSONS[10],lowerPlan);
+  console.log('PASS: larger framing supports custom rectangles at the right and bottom edges');
 
   // Keyboard-only cut is an independent alternative to dragging.
   await page.locator('[data-lesson="9"]').click();
@@ -272,12 +290,23 @@ try {
   await finalPage.reload();
   assert.equal(await canvasHasInk(finalPage),true,'Drawing survives reload');
   await finalPage.locator('#board').scrollIntoViewIfNeeded();
+  await dragBetween(finalPage,await screenPoint(finalPage,LESSONS[11],[10,3]),await screenPoint(finalPage,LESSONS[11],[10,8]));
   await dragBetween(finalPage,await screenPoint(finalPage,LESSONS[11],[4,3]),await screenPoint(finalPage,LESSONS[11],[8,3]));
-  await finalPage.waitForFunction(() => document.querySelectorAll('.piece-label').length === 2);
-  assert.equal(await finalPage.locator('.piece-label').count(),2,'Final problem accepts an optional split');
+  await finalPage.waitForFunction(() => document.querySelectorAll('.piece-label').length === 3);
+  assert.equal(await finalPage.locator('.piece-label').count(),3,'Final problem accepts optional custom splits');
   await finalPage.reload();
-  assert.equal(await finalPage.locator('.piece-label').count(),2,'Final split survives reload');
+  assert.equal(await finalPage.locator('.piece-label').count(),3,'Final split survives reload');
   assert.equal(await canvasHasInk(finalPage),true,'Splitting leaves scratchpad work intact');
+  await finalPage.locator('#board').scrollIntoViewIfNeeded();
+  for (const [axis,a,b,length] of [['w',[10,8],[12,8],2],['h',[10,3],[10,8],5]]) {
+    if (axis === 'h') await finalPage.locator('#rotate-ruler').click();
+    const zero = await finalPage.locator('[data-drag="zero"] circle:last-child').boundingBox();
+    await dragBetween(finalPage,{x:zero.x+zero.width/2,y:zero.y+zero.height/2},await screenPoint(finalPage,LESSONS[11],a));
+    assert.match(await finalPage.locator('[data-drag="zero"]').getAttribute('aria-label'),new RegExp(`Zero at ${a[0]} across, ${a[1]} down`));
+    const marker = await finalPage.locator('[data-drag="marker"] path').first().evaluate(path => {const p=path.getPointAtLength(0).matrixTransform(path.getScreenCTM());return {x:p.x,y:p.y};});
+    await dragBetween(finalPage,marker,await screenPoint(finalPage,LESSONS[11],b));
+    assert.equal(await finalPage.locator('[data-drag="marker"]').getAttribute('aria-valuenow'),String(length),'Final free ruler reaches a custom far-right rectangle');
+  }
   await finalPage.locator('#final-answer').fill('70');
   await finalPage.locator('#final-form button').click();
   assert.match(await finalPage.locator('#feedback').textContent(),/add the areas/);
@@ -305,6 +334,7 @@ try {
   activePage = mobile;
   mobile.on('pageerror', error => failures.push(error.message));
   await mobile.goto(url);
+  assert.ok((await mobile.locator('.shape-stroke').boundingBox()).width >= 52,'Phone rectangle is large enough to see');
   await mobile.evaluate(() => {
     window.touchTrace = [];
     for (const type of ['touchstart','touchend','touchcancel','pointerdown','pointerup','pointercancel','gotpointercapture','lostpointercapture','mousedown','mouseup','click','focusin']) document.addEventListener(type,event => {
