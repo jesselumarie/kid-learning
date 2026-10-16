@@ -282,7 +282,7 @@ function onSubmit(event) {
 
 function updateRuler(focusHandle) {
   // Keep the touched nodes alive through pointerup and the native touchend.
-  // Replacing them mid-gesture can suppress the next tap in mobile Chromium.
+  // Native touchend must still reach the element where the touch started.
   const ruler = board.querySelector('[data-ruler]');
   if (!ruler) { renderBoard(); return; }
   const { x,y,vertical,value } = state.ruler;
@@ -387,11 +387,9 @@ board.addEventListener('pointerdown', event => {
   const handle = event.target.closest('[data-drag]');
   const point = eventPoint(event);
   if (handle && state.phase === 'measure') {
-    event.preventDefault();
     drag = { kind: handle.dataset.drag, start: point, ruler: { ...state.ruler } };
     board.setPointerCapture(event.pointerId);
   } else if (state.phase === 'split' && !isRect() && state.splitIndex < 0) {
-    event.preventDefault();
     drag = { kind: 'split', start: rounded(point), end: rounded(point) };
     board.setPointerCapture(event.pointerId);
     const preview = document.createElementNS('http://www.w3.org/2000/svg','line');
