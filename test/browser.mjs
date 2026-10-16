@@ -44,6 +44,19 @@ async function touchDrag(page, a, b) {
   await session.send('Input.dispatchTouchEvent',{ type: 'touchEnd', touchPoints: [] });
   await page.evaluate(() => new Promise(requestAnimationFrame));
 }
+async function touchTap(page, locator) {
+  await locator.scrollIntoViewIfNeeded();
+  const box = await locator.boundingBox();
+  assert.ok(box,'Touch target is visible');
+  let session = touchSessions.get(page);
+  if (!session) { session = await page.context().newCDPSession(page); touchSessions.set(page,session); }
+  // Use the same native input stream as drags, with a rendered frame between
+  // contact and release. A physical tap is not a zero-duration touch sequence.
+  await session.send('Input.dispatchTouchEvent',{ type: 'touchStart', touchPoints: [{ x:box.x+box.width/2,y:box.y+box.height/2 }] });
+  await page.evaluate(() => new Promise(requestAnimationFrame));
+  await session.send('Input.dispatchTouchEvent',{ type: 'touchEnd', touchPoints: [] });
+  await page.evaluate(() => new Promise(requestAnimationFrame));
+}
 async function drawCuts(page, lesson, lines) {
   await page.locator('#board').scrollIntoViewIfNeeded();
   for (const [a,b] of lines) await dragBetween(page, await screenPoint(page,lesson,a), await screenPoint(page,lesson,b));
@@ -55,7 +68,7 @@ async function measureSide(page, lesson, rect, axis, { manual = true, touch = fa
   const b = axis === 'w' ? [rect.x+rect.w,rect.y+rect.h] : [rect.x,rect.y+rect.h];
   if (manual) {
     if (axis === 'h') {
-      if (touch) await page.locator('#rotate-ruler').tap(); else await page.locator('#rotate-ruler').click();
+      if (touch) await touchTap(page,page.locator('#rotate-ruler')); else await page.locator('#rotate-ruler').click();
       await page.waitForFunction(() => document.querySelector('[data-drag="marker"]').getAttribute('aria-orientation') === 'vertical');
     }
     await page.locator('#board').scrollIntoViewIfNeeded();
@@ -66,7 +79,7 @@ async function measureSide(page, lesson, rect, axis, { manual = true, touch = fa
     const end = await screenPoint(page,lesson,b);
     await move(page,marker,end);
   } else {
-    if (touch) await page.locator('#align-ruler').tap(); else await page.locator('#align-ruler').click();
+    if (touch) await touchTap(page,page.locator('#align-ruler')); else await page.locator('#align-ruler').click();
     try {
       await page.waitForFunction(({ x,y }) => document.querySelector('[data-drag="zero"]').getAttribute('aria-label').includes(`Zero at ${x} across, ${y} down.`), { x:a[0], y:a[1] }, { timeout: 3000 });
     } catch (error) {
@@ -77,12 +90,12 @@ async function measureSide(page, lesson, rect, axis, { manual = true, touch = fa
     while (Number((await page.locator('#ruler-value').textContent()).split(' ')[0]) !== value) {
       const current = Number((await page.locator('#ruler-value').textContent()).split(' ')[0]);
       const control = page.locator(current < value ? '#longer' : '#shorter');
-      if (touch) await control.tap(); else await control.click();
+      if (touch) await touchTap(page,control); else await control.click();
       await page.waitForFunction(expected => Number(document.querySelector('#ruler-value').textContent.split(' ')[0]) === expected, current + (current < value ? 1 : -1));
     }
   }
   await page.locator('#length-answer').fill(String(value));
-  if (touch) await page.locator('#measurement-form button').tap(); else await page.locator('#measurement-form button').click();
+  if (touch) await touchTap(page,page.locator('#measurement-form button')); else await page.locator('#measurement-form button').click();
   await page.waitForFunction(() => !document.querySelector('#length-answer') || document.querySelector('#length-answer').value === '' || document.querySelector('#feedback').textContent !== '');
   const feedback = await page.locator('#feedback').textContent();
   if (feedback) {
@@ -197,10 +210,10 @@ try {
       if (window.touchTrace.length > 40) window.touchTrace.shift();
     },true);
   });
-  await mobile.locator('[data-lesson="10"]').tap();
-  await mobile.locator('#show-splits').tap();
-  await mobile.locator('[data-split="0"]').tap();
-  await mobile.locator('#begin-measuring').tap();
+  await touchTap(mobile,mobile.locator('[data-lesson="10"]'));
+  await touchTap(mobile,mobile.locator('#show-splits'));
+  await touchTap(mobile,mobile.locator('[data-split="0"]'));
+  await touchTap(mobile,mobile.locator('#begin-measuring'));
   assert.ok((await mobile.locator('#board').boundingBox()).y >= 0, 'New measurement brings mobile board into view');
   await mobile.screenshot({ path: 'test-results/mobile-measure.png', fullPage: true });
   for (const [i,rect] of LESSONS[10].splits[0].rects.entries()) for (const axis of ['w','h']) await measureSide(mobile,LESSONS[10],rect,axis,{manual:i === 0,touch:true});
@@ -209,19 +222,19 @@ try {
   assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),true,'No mobile horizontal page overflow');
   await mobile.reload();
   assert.match(await mobile.locator('#progress-text').textContent(), /1 of 12/);
-  await mobile.locator('#grownups').tap();
+  await touchTap(mobile,mobile.locator('#grownups'));
   assert.match(await mobile.locator('#parent-progress').textContent(), /0 of 3 final challenges solved on their own/);
-  await mobile.locator('#reset-progress').tap();
-  await mobile.locator('#reset-progress').tap();
-  await mobile.locator('.dialog-close').tap();
+  await touchTap(mobile,mobile.locator('#reset-progress'));
+  await touchTap(mobile,mobile.locator('#reset-progress'));
+  await touchTap(mobile,mobile.locator('.dialog-close'));
   assert.match(await mobile.locator('#progress-text').textContent(), /0 of 12/);
-  await mobile.locator('[data-cell="0-0"]').tap();
-  await mobile.locator('#begin-measuring').tap();
+  await touchTap(mobile,mobile.locator('[data-cell="0-0"]'));
+  await touchTap(mobile,mobile.locator('#begin-measuring'));
   assert.match(await mobile.locator('#notebook-title').textContent(),/Measure the width/);
-  await mobile.locator('[data-lesson="3"]').tap();
+  await touchTap(mobile,mobile.locator('[data-lesson="3"]'));
   await mobile.locator('#board').scrollIntoViewIfNeeded();
   await touchDrag(mobile,await screenPoint(mobile,LESSONS[3],[4,2]),await screenPoint(mobile,LESSONS[3],[4,5]));
-  await mobile.locator('#begin-measuring').tap();
+  await touchTap(mobile,mobile.locator('#begin-measuring'));
   assert.match(await mobile.locator('#notebook-title').textContent(),/Measure the width/);
   console.log('PASS: touch dragging and tap controls, mobile layout, supported completion, persistence, and reset');
 
