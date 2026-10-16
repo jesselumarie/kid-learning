@@ -154,11 +154,11 @@ function rulerSvg() {
   const mobile = window.innerWidth <= 680;
   const height = mobile ? 62 : 40;
   const positionLabel = `Zero at ${Number(x.toFixed(1))} across, ${Number(y.toFixed(1))} down. ${vertical ? 'Vertical' : 'Horizontal'}. Use arrow keys to move one unit.`;
-  let svg = `<g transform="translate(${px} ${py}) rotate(${vertical ? 90 : 0})"><g class="ruler-body" data-drag="body" tabindex="0" role="button" aria-label="Move ruler. ${positionLabel}"><rect x="-14" y="0" width="${width + 28}" height="${height + 3}" rx="5" fill="#d3a343" opacity=".22" transform="translate(0 4)"/><rect x="-14" y="0" width="${width + 28}" height="${height}" rx="5" fill="#f4d984" fill-opacity=".94" stroke="#b89648" stroke-width="1.2"/>`;
-  for (let i = 0; i <= length; i++) {
-    svg += `<path d="M ${i*s} 0 v${mobile ? 19 : 13}" stroke="#8b7036" stroke-width="1.3"/><text x="${i*s}" y="${mobile ? 46 : 29}" text-anchor="middle" font-size="${mobile ? 22 : 14}" font-weight="700" fill="#755d2b">${i}</text>`;
+  let svg = `<g data-ruler transform="translate(${px} ${py}) rotate(${vertical ? 90 : 0})"><g class="ruler-body" data-drag="body" tabindex="0" role="button" aria-label="Move ruler. ${positionLabel}"><rect data-ruler-bar x="-14" y="0" width="${width + 28}" height="${height + 3}" rx="5" fill="#d3a343" opacity=".22" transform="translate(0 4)"/><rect data-ruler-bar x="-14" y="0" width="${width + 28}" height="${height}" rx="5" fill="#f4d984" fill-opacity=".94" stroke="#b89648" stroke-width="1.2"/>`;
+  for (let i = 0; i <= 19; i++) {
+    svg += `<g data-tick="${i}" style="display:${i <= length ? 'inline' : 'none'}"><path d="M ${i*s} 0 v${mobile ? 19 : 13}" stroke="#8b7036" stroke-width="1.3"/><text x="${i*s}" y="${mobile ? 46 : 29}" text-anchor="middle" font-size="${mobile ? 22 : 14}" font-weight="700" fill="#755d2b">${i}</text></g>`;
   }
-  svg += `</g><g data-drag="zero" class="ruler-body" tabindex="0" role="button" aria-label="Ruler zero handle. ${positionLabel}"><circle cx="0" cy="0" r="${mobile ? 42 : 24}" fill="transparent"/><circle cx="0" cy="0" r="${mobile ? 10 : 7}" fill="#fffdf1" stroke="#9d7b2d" stroke-width="2"/></g><g data-drag="marker" class="ruler-marker" tabindex="0" role="slider" aria-label="Ruler end marker" aria-orientation="${vertical ? 'vertical' : 'horizontal'}" aria-valuemin="0" aria-valuemax="18" aria-valuenow="${value}" aria-valuetext="${value} ${lesson.unit}"><rect x="${value*s-(mobile ? 42 : 24)}" y="-24" width="${mobile ? 84 : 48}" height="${height+42}" fill="transparent"/><path d="M ${value*s} -17 v${height+25}" stroke="#b35e43" stroke-width="2.5"/><path d="M ${value*s-8} -21 h16 l-8 12 Z" fill="#b35e43"/><circle cx="${value*s}" cy="${height+8}" r="${mobile ? 9 : 6}" fill="#b35e43"/></g></g>`;
+  svg += `</g><g data-drag="zero" class="ruler-body" tabindex="0" role="button" aria-label="Ruler zero handle. ${positionLabel}"><circle cx="0" cy="0" r="${mobile ? 42 : 24}" fill="transparent"/><circle cx="0" cy="0" r="${mobile ? 10 : 7}" fill="#fffdf1" stroke="#9d7b2d" stroke-width="2"/></g><g data-drag="marker" data-base-value="${value}" class="ruler-marker" tabindex="0" role="slider" aria-label="Ruler end marker" aria-orientation="${vertical ? 'vertical' : 'horizontal'}" aria-valuemin="0" aria-valuemax="18" aria-valuenow="${value}" aria-valuetext="${value} ${lesson.unit}"><rect x="${value*s-(mobile ? 42 : 24)}" y="-24" width="${mobile ? 84 : 48}" height="${height+42}" fill="transparent"/><path d="M ${value*s} -17 v${height+25}" stroke="#b35e43" stroke-width="2.5"/><path d="M ${value*s-8} -21 h16 l-8 12 Z" fill="#b35e43"/><circle cx="${value*s}" cy="${height+8}" r="${mobile ? 9 : 6}" fill="#b35e43"/></g></g>`;
   return svg;
 }
 
@@ -281,7 +281,24 @@ function onSubmit(event) {
 }
 
 function updateRuler(focusHandle) {
-  renderBoard();
+  // Keep the touched nodes alive through pointerup and the native touchend.
+  // Replacing them mid-gesture can suppress the next tap in mobile Chromium.
+  const ruler = board.querySelector('[data-ruler]');
+  if (!ruler) { renderBoard(); return; }
+  const { x,y,vertical,value } = state.ruler;
+  const [px,py] = xy([x,y]);
+  ruler.setAttribute('transform',`translate(${px} ${py}) rotate(${vertical ? 90 : 0})`);
+  const length = Math.max(5,value+1);
+  ruler.querySelectorAll('[data-ruler-bar]').forEach(bar => bar.setAttribute('width',length*layout.scale+28));
+  ruler.querySelectorAll('[data-tick]').forEach(tick => { tick.style.display = Number(tick.dataset.tick) <= length ? 'inline' : 'none'; });
+  const position = `Zero at ${Number(x.toFixed(1))} across, ${Number(y.toFixed(1))} down. ${vertical ? 'Vertical' : 'Horizontal'}. Use arrow keys to move one unit.`;
+  ruler.querySelector('[data-drag="body"]').setAttribute('aria-label',`Move ruler. ${position}`);
+  ruler.querySelector('[data-drag="zero"]').setAttribute('aria-label',`Ruler zero handle. ${position}`);
+  const marker = ruler.querySelector('[data-drag="marker"]');
+  marker.setAttribute('transform',`translate(${(value-Number(marker.dataset.baseValue))*layout.scale} 0)`);
+  marker.setAttribute('aria-valuenow',value);
+  marker.setAttribute('aria-valuetext',`${value} ${lesson.unit}`);
+  marker.setAttribute('aria-orientation',vertical ? 'vertical' : 'horizontal');
   const output = $('#ruler-value');
   if (output) output.textContent = `${state.ruler.value} ${lesson.unit}`;
   if (focusHandle) board.querySelector(`[data-drag="${focusHandle}"]`)?.focus({ preventScroll: true });
@@ -366,7 +383,7 @@ function finishCut(line) {
 board.addEventListener('pointerdown', event => {
   if (event.button !== 0 && event.pointerType !== 'touch') return;
   const cell = event.target.closest('[data-cell]');
-  if (cell) { event.preventDefault(); toggleCell(cell.dataset.cell); return; }
+  if (cell) return;
   const handle = event.target.closest('[data-drag]');
   const point = eventPoint(event);
   if (handle && state.phase === 'measure') {
@@ -377,12 +394,26 @@ board.addEventListener('pointerdown', event => {
     event.preventDefault();
     drag = { kind: 'split', start: rounded(point), end: rounded(point) };
     board.setPointerCapture(event.pointerId);
+    const preview = document.createElementNS('http://www.w3.org/2000/svg','line');
+    preview.id = 'drag-preview';
+    preview.setAttribute('stroke','#bd8840');
+    preview.setAttribute('stroke-width','3');
+    preview.setAttribute('stroke-dasharray','6 4');
+    preview.setAttribute('pointer-events','none');
+    board.append(preview);
   }
 });
 board.addEventListener('pointermove', event => {
   if (!drag) return;
   const point = eventPoint(event);
-  if (drag.kind === 'split') { drag.end = rounded(point); renderBoard(); return; }
+  if (drag.kind === 'split') {
+    drag.end = rounded(point);
+    const [x1,y1] = xy(drag.start);
+    const [x2,y2] = xy(drag.end);
+    const preview = board.querySelector('#drag-preview');
+    for (const [key,value] of Object.entries({x1,y1,x2,y2})) preview.setAttribute(key,value);
+    return;
+  }
   if (drag.kind === 'marker') {
     state.ruler.value = Math.max(0,Math.min(18,Math.round(state.ruler.vertical ? point[1]-state.ruler.y : point[0]-state.ruler.x)));
   } else {
@@ -406,10 +437,13 @@ board.addEventListener('pointerup', event => {
   }
   drag = null;
   if (board.hasPointerCapture(event.pointerId)) board.releasePointerCapture(event.pointerId);
-  renderBoard();
-  if (state.phase === 'split') renderTools();
+  if (state.phase === 'split') {
+    renderTools();
+    requestAnimationFrame(() => { if (!drag) renderBoard(); });
+  } else updateRuler();
 });
-board.addEventListener('pointercancel', () => { drag = null; renderBoard(); });
+board.addEventListener('pointercancel', () => { drag = null; requestAnimationFrame(() => { if (!drag) renderBoard(); }); });
+board.addEventListener('click', event => { const cell = event.target.closest('[data-cell]'); if (cell) toggleCell(cell.dataset.cell); });
 board.addEventListener('keydown', event => {
   if (event.target === board && state.phase === 'split' && !isRect() && state.splitIndex < 0) {
     if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Enter','Escape'].includes(event.key)) return;
@@ -439,4 +473,4 @@ board.addEventListener('keydown', event => {
 });
 
 startLesson(index);
-window.addEventListener('resize', () => renderBoard());
+window.addEventListener('resize', () => { if (!drag) renderBoard(); });

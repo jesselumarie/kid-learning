@@ -215,6 +215,14 @@ try {
   await mobile.locator('#reset-progress').tap();
   await mobile.locator('.dialog-close').tap();
   assert.match(await mobile.locator('#progress-text').textContent(), /0 of 12/);
+  await mobile.locator('[data-cell="0-0"]').tap();
+  await mobile.locator('#begin-measuring').tap();
+  assert.match(await mobile.locator('#notebook-title').textContent(),/Measure the width/);
+  await mobile.locator('[data-lesson="3"]').tap();
+  await mobile.locator('#board').scrollIntoViewIfNeeded();
+  await touchDrag(mobile,await screenPoint(mobile,LESSONS[3],[4,2]),await screenPoint(mobile,LESSONS[3],[4,5]));
+  await mobile.locator('#begin-measuring').tap();
+  assert.match(await mobile.locator('#notebook-title').textContent(),/Measure the width/);
   console.log('PASS: touch dragging and tap controls, mobile layout, supported completion, persistence, and reset');
 
   const blockedContext = await browser.newContext();
