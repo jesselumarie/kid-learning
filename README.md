@@ -29,6 +29,8 @@ npm run test:browser
 
 The browser suite starts its own preview server and completes every lesson, including dragged measurements, custom cuts, keyboard controls, and a touch-sized layout. Screenshots are saved in the ignored `test-results/` folder.
 
+CI runs mathematics and desktop interactions on Linux, and native touch gestures on macOS. Linux Chromium's DevTools touch emulation loses clicks after dragging even on the static control in `test/touch-control.mjs`; the touch job keeps the complete assertions on a working native-input runner. Both jobs must pass before deployment. Run that control script manually when investigating browser input behavior.
+
 ## Learning path
 
 The 12 lessons follow four stages:

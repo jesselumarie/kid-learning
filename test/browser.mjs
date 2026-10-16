@@ -202,6 +202,7 @@ try {
   console.log('PASS: keyboard-only independent cut');
   }
 
+  if (!process.env.DESKTOP_ONLY) {
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
   const mobile = await mobileContext.newPage();
   activePage = mobile;
@@ -241,6 +242,7 @@ try {
   await touchTap(mobile,mobile.locator('#begin-measuring'));
   assert.match(await mobile.locator('#notebook-title').textContent(),/Measure the width/);
   console.log('PASS: touch dragging and tap controls, mobile layout, supported completion, persistence, and reset');
+  }
 
   const blockedContext = await browser.newContext();
   await blockedContext.addInitScript(() => { Object.defineProperty(window,'localStorage',{ get() { throw new DOMException('Unavailable','SecurityError'); } }); });

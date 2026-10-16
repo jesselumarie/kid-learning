@@ -27,17 +27,40 @@ jobs:
       - run: npm run check
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: node test/touch-control.mjs
       - run: npm run test:browser
+        env:
+          DESKTOP_ONLY: '1'
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: browser-failure-screenshots
           path: test-results/
 
+  touch:
+    name: Check native touch interactions
+    # Linux CDP loses clicks after touchMove even on a static control page.
+    # macOS runs the same native gestures and assertions without that defect.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - run: npm ci
+      - run: npx playwright install chromium
+      - run: npm run test:browser
+        env:
+          MOBILE_ONLY: '1'
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: touch-failure-screenshots
+          path: test-results/
+
   deploy:
     name: Publish static site
-    needs: check
+    needs: [check, touch]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
