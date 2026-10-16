@@ -11,7 +11,7 @@ const url = external || `http://127.0.0.1:${port}`;
 const server = external ? null : spawn(process.execPath, ['scripts/serve.mjs'], { env: { ...process.env, PORT: String(port) }, stdio: 'pipe' });
 if (server) await new Promise((resolve, reject) => { server.stdout.once('data', resolve); server.once('error', reject); server.once('exit', code => { if (code) reject(new Error(`Server exited ${code}`)); }); });
 await mkdir('test-results', { recursive: true });
-const browser = await chromium.launch();
+const browser = await chromium.launch({ channel: 'chromium' });
 const context = await browser.newContext({ viewport: { width: 1440, height: 1050 }, reducedMotion: 'reduce' });
 const page = await context.newPage();
 let activePage = page;
