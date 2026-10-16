@@ -14,6 +14,8 @@ await mkdir('test-results', { recursive: true });
 const browser = await chromium.launch();
 const context = await browser.newContext({ viewport: { width: 1440, height: 1050 }, reducedMotion: 'reduce' });
 const page = await context.newPage();
+let activePage = page;
+const touchSessions = new WeakMap();
 const failures = [];
 page.on('pageerror', error => failures.push(error.message));
 page.on('response', response => { if (response.status() >= 400) failures.push(`${response.status()} ${response.url()}`); });
@@ -32,11 +34,15 @@ async function dragBetween(page, a, b) {
   await page.mouse.move(a.x,a.y); await page.mouse.down(); await page.mouse.move(b.x,b.y,{ steps: 10 }); await page.mouse.up();
 }
 async function touchDrag(page, a, b) {
-  const session = await page.context().newCDPSession(page);
+  let session = touchSessions.get(page);
+  if (!session) { session = await page.context().newCDPSession(page); touchSessions.set(page,session); }
   await session.send('Input.dispatchTouchEvent',{ type: 'touchStart', touchPoints: [{ x:a.x,y:a.y }] });
-  for (let i=1;i<=10;i++) await session.send('Input.dispatchTouchEvent',{ type: 'touchMove', touchPoints: [{ x:a.x+(b.x-a.x)*i/10,y:a.y+(b.y-a.y)*i/10 }] });
+  for (let i=1;i<=10;i++) {
+    await session.send('Input.dispatchTouchEvent',{ type: 'touchMove', touchPoints: [{ x:a.x+(b.x-a.x)*i/10,y:a.y+(b.y-a.y)*i/10 }] });
+    await page.evaluate(() => new Promise(requestAnimationFrame));
+  }
   await session.send('Input.dispatchTouchEvent',{ type: 'touchEnd', touchPoints: [] });
-  await session.detach();
+  await page.evaluate(() => new Promise(requestAnimationFrame));
 }
 async function drawCuts(page, lesson, lines) {
   await page.locator('#board').scrollIntoViewIfNeeded();
@@ -181,6 +187,7 @@ try {
 
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
   const mobile = await mobileContext.newPage();
+  activePage = mobile;
   mobile.on('pageerror', error => failures.push(error.message));
   await mobile.goto(url);
   await mobile.evaluate(() => {
@@ -221,7 +228,8 @@ try {
   assert.deepEqual(failures,[],'No runtime or asset errors');
   console.log('All browser checks passed.');
 } catch (error) {
-  await page.screenshot({ path: 'test-results/failure.png', fullPage: true });
+  console.log('Last touch events:',await activePage.evaluate(() => window.touchTrace));
+  await activePage.screenshot({ path: 'test-results/failure.png', fullPage: true });
   throw error;
 } finally {
   await browser.close();
