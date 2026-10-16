@@ -48,7 +48,7 @@ The ruler uses drawing units. Its centimeters and feet are a model, not physical
 
 ## Controls and accessibility
 
-Drag the ruler's zero handle to the highlighted side, turn the ruler when needed, and drag the red end marker to the far corner. Focus either ruler handle and use arrow keys for keyboard measurement. “Line up zero” and the −/+ buttons provide a tap alternative. The ruler stays 15 units long, with the same unit spacing in every lesson. Moving the marker changes the reading, not the ruler’s size. The rotate button names the new direction.
+Either long edge of the ruler can line up with the highlighted side, so its body can sit inside or outside the rectangle. Drag either white zero handle to a corner, rotate when needed, and move the red marker to the other corner. “Switch edge” moves the ruler to the other side of its measuring line, including with a keyboard. Focus either ruler handle and use arrow keys for keyboard measurement. “Line up zero” and the −/+ buttons provide a tap alternative. The ruler stays 15 units long, with the same unit spacing in every lesson. Moving the marker changes the reading, not the ruler’s size. The rotate button names the new direction.
 
 Draw cuts with a pointer, or choose “Draw with keys”: arrow keys position the cursor, Enter starts/finishes a cut, and Escape cancels it. Any valid plan with up to six rectangles is accepted. Example splits provide extra support. Form fields have labels, feedback and hints are announced through live regions, and reduced-motion preferences are respected.
 

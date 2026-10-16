@@ -63,7 +63,7 @@ async function drawCuts(page, lesson, lines) {
   for (const [a,b] of lines) await dragBetween(page, await screenPoint(page,lesson,a), await screenPoint(page,lesson,b));
   assert.equal(await page.locator('#begin-measuring').isEnabled(), true, `Cuts complete for ${lesson.id}`);
 }
-async function measureSide(page, lesson, rect, axis, { manual = true, touch = false } = {}) {
+async function measureSide(page, lesson, rect, axis, { manual = true, touch = false, rulerEdge = 'near', beforeRecord } = {}) {
   const value = rect[axis];
   const a = axis === 'w' ? [rect.x,rect.y+rect.h] : [rect.x,rect.y];
   const b = axis === 'w' ? [rect.x+rect.w,rect.y+rect.h] : [rect.x,rect.y+rect.h];
@@ -73,7 +73,7 @@ async function measureSide(page, lesson, rect, axis, { manual = true, touch = fa
       await page.waitForFunction(() => document.querySelector('[data-drag="marker"]').getAttribute('aria-orientation') === 'vertical');
     }
     await page.locator('#board').scrollIntoViewIfNeeded();
-    const box = await page.locator('[data-drag="zero"] circle:last-child').boundingBox();
+    const box = await page.locator(rulerEdge === 'far' ? '[data-zero-edge="far"]' : '[data-drag="zero"] circle:last-child').boundingBox();
     const move = touch ? touchDrag : dragBetween;
     await move(page,{ x: box.x+box.width/2, y: box.y+box.height/2 },await screenPoint(page,lesson,a));
     const marker = await page.locator('[data-drag="marker"] path').first().evaluate(path => { const p = path.getPointAtLength(0).matrixTransform(path.getScreenCTM()); return { x: p.x, y: p.y }; });
@@ -95,6 +95,7 @@ async function measureSide(page, lesson, rect, axis, { manual = true, touch = fa
       await page.waitForFunction(expected => Number(document.querySelector('#ruler-value').textContent.split(' ')[0]) === expected, current + (current < value ? 1 : -1));
     }
   }
+  if (beforeRecord) await beforeRecord();
   if (touch) {
     await touchTap(page,page.locator('#length-answer'));
     await page.waitForFunction(() => document.activeElement?.id === 'length-answer',null,{ timeout: 3000 });
@@ -165,6 +166,13 @@ try {
   await page.locator('#align-ruler').click();
   await page.locator('#longer').click({ clickCount: 2 });
   assert.deepEqual(await rulerDimensions(page),fixedRuler,'Moving the marker leaves ruler dimensions unchanged');
+  await page.locator('[data-drag="far-zero"]').focus();
+  await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowLeft');
+  const farBeforeRotate = await page.locator('[data-zero-edge="far"]').boundingBox();
+  await page.locator('#rotate-ruler').click();
+  const farAfterRotate = await page.locator('[data-zero-edge="far"]').boundingBox();
+  assert.ok(Math.abs(farBeforeRotate.x-farAfterRotate.x)<.1 && Math.abs(farBeforeRotate.y-farAfterRotate.y)<.1,'Rotation preserves the far zero selected with a keyboard');
+  await page.locator('#rotate-ruler').click();
   await page.locator('#length-answer').fill('5');
   await page.locator('#measurement-form button').click();
   assert.match(await page.locator('#feedback').textContent(), /Write that number/);
@@ -173,7 +181,10 @@ try {
   await page.locator('#rotate-ruler').click();
   assert.deepEqual(await rulerDimensions(page),fixedRuler,'Rotation leaves ruler dimensions unchanged');
   assert.match(await page.locator('#rotate-ruler').textContent(),/Rotate horizontal/);
-  await page.locator('[data-drag="zero"]').focus();
+  await page.locator('#switch-ruler-edge').focus();
+  await page.keyboard.press('Enter');
+  assert.deepEqual(await rulerDimensions(page),fixedRuler,'Switching edges keeps ruler dimensions unchanged');
+  await page.locator('[data-drag="far-zero"]').focus();
   await page.keyboard.press('ArrowUp'); await page.keyboard.press('ArrowUp');
   await page.locator('[data-drag="marker"]').focus(); await page.keyboard.press('ArrowRight');
   await page.locator('#length-answer').fill('3');
@@ -237,7 +248,18 @@ try {
     await page.locator('#begin-measuring').click();
     assert.deepEqual(await rulerDimensions(page),fixedRuler,`Fixed ruler in lesson ${i+1}`);
     if (i === 3) await page.screenshot({ path: 'test-results/composite-measure.png', fullPage: true });
-    for (const rect of plan.rects) for (const axis of ['w','h']) await measureSide(page,lesson,rect,axis);
+    for (const rect of plan.rects) for (const axis of ['w','h']) await measureSide(page,lesson,rect,axis,{
+      rulerEdge: i%2 || i===10 ? 'far' : 'near',
+      beforeRecord: i===10 && rect.x===0 && axis==='h' ? async () => {
+        for (const [width,height,rulerHeight] of [[390,844,80],[1440,1050,44]]) {
+          await page.setViewportSize({width,height});
+          await page.waitForFunction(expected => Number(document.querySelectorAll('[data-ruler-bar]')[1].getAttribute('height')) === expected,rulerHeight);
+          const zero = await page.locator('[data-zero-edge="far"]').boundingBox();
+          const corner = await screenPoint(page,lesson,[rect.x,rect.y]);
+          assert.ok(Math.abs(zero.x+zero.width/2-corner.x)<1 && Math.abs(zero.y+zero.height/2-corner.y)<1,'Outside alignment survives the desktop/phone breakpoint');
+        }
+      } : undefined,
+    });
     await finishCalculations(page,lesson,plan);
     if (lesson.independent) assert.equal(await page.locator('.support-tag').textContent(), 'COMPLETED WITHOUT HELP');
     console.log(`PASS: complete lesson ${i+1}, ${lesson.title}, with dragged measurements`);
@@ -348,7 +370,7 @@ try {
   await touchTap(mobile,mobile.locator('#begin-measuring'));
   assert.ok((await mobile.locator('#board').boundingBox()).y >= 0, 'New measurement brings mobile board into view');
   await mobile.screenshot({ path: 'test-results/mobile-measure.png', fullPage: true });
-  for (const [i,rect] of LESSONS[10].splits[0].rects.entries()) for (const axis of ['w','h']) await measureSide(mobile,LESSONS[10],rect,axis,{manual:i === 0,touch:true});
+  for (const [i,rect] of LESSONS[10].splits[0].rects.entries()) for (const axis of ['w','h']) await measureSide(mobile,LESSONS[10],rect,axis,{manual:i === 0,touch:true,rulerEdge:'far'});
   await finishCalculations(mobile,LESSONS[10],LESSONS[10].splits[0]);
   assert.equal(await mobile.locator('.support-tag').textContent(),'COMPLETED WITH HELP');
   assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),true,'No mobile horizontal page overflow');
@@ -377,6 +399,13 @@ try {
     assert.ok(a.x >= diagramBox.x && a.right <= diagramBox.x+diagramBox.width,'Final labels fit within the phone diagram');
     for (const b of dimensionBoxes.slice(i+1)) assert.ok(a.right<=b.x || b.right<=a.x || a.bottom<=b.y || b.bottom<=a.y,'Final dimension labels do not overlap');
   }
+  await touchTap(mobile,mobile.locator('#rotate-ruler'));
+  await mobile.locator('#board').scrollIntoViewIfNeeded();
+  const finalZero = await mobile.locator('[data-zero-edge="far"]').boundingBox();
+  await touchDrag(mobile,{x:finalZero.x+finalZero.width/2,y:finalZero.y+finalZero.height/2},await screenPoint(mobile,LESSONS[11],[0,3]));
+  const finalMarker = await mobile.locator('[data-drag="marker"] path').first().evaluate(path => {const p=path.getPointAtLength(0).matrixTransform(path.getScreenCTM());return {x:p.x,y:p.y};});
+  await touchDrag(mobile,finalMarker,await screenPoint(mobile,LESSONS[11],[0,8]));
+  assert.equal(await mobile.locator('[data-drag="marker"]').getAttribute('aria-valuenow'),'5','Final ruler can measure from outside the left edge on a phone');
   await drawOnScratchpad(mobile,true);
   await touchTap(mobile,mobile.locator('[data-scratch-action="clear"]'));
   assert.equal(await canvasHasInk(mobile),false,'Touch clear removes drawing');

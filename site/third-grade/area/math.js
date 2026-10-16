@@ -15,6 +15,14 @@ export function measure(a, b) {
   return null;
 }
 
+export function rulerMatchesSide(side, ruler, thickness) {
+  const vertical = side.axis === 'h';
+  if (ruler.vertical !== vertical || ruler.value !== side.length) return false;
+  const along = vertical ? ruler.y-side.a[1] : ruler.x-side.a[0];
+  const across = vertical ? ruler.x-side.a[0] : ruler.y-side.a[1];
+  return Math.abs(along) < .35 && (Math.abs(across) < .35 || Math.abs(across+thickness) < .35);
+}
+
 export function checkNumber(raw, expected) {
   if (typeof raw !== 'string' && typeof raw !== 'number') return false;
   const value = String(raw).trim();

@@ -1,5 +1,5 @@
 import { LESSONS } from './lessons.js';
-import { checkNumber, evaluateWork, evaluateFinal, polygonArea, splitFromCuts } from './math.js';
+import { checkNumber, evaluateWork, evaluateFinal, polygonArea, splitFromCuts, rulerMatchesSide } from './math.js';
 import { mountScratchpad, normalizeStrokes } from './scratchpad.js';
 
 const $ = (selector) => document.querySelector(selector);
@@ -30,6 +30,7 @@ const split = () => state.customSplit || lesson.splits[Math.max(0, state.splitIn
 const unit = () => `${lesson.unit}²`;
 const isRect = () => lesson.polygon.length === 4;
 const isFinal = () => lesson.final === true;
+const rulerHeight = () => window.innerWidth <= 680 ? 80 : 44;
 const completeCount = () => Object.keys(progress.completed).length;
 
 function saveProgress() {
@@ -47,12 +48,12 @@ function startLesson(next, focus = false) {
     phase: isFinal() ? 'final' : 'split', splitIndex: isRect() ? 0 : -1, drawnLines: [], showChoices: !lesson.independent, customSplit: null, cursor: null, cutStart: null,
     grid: lesson.grid, counted: new Set(), measuring: 0, supported: isFinal() && progress.draft?.supported === true, hints: 0,
     work: { measurements: [], areas: [], total: '', unit: '', reason: -1 },
-    ruler: { x: 0, y: 0, vertical: false, value: 2 },
+    ruler: { x: 0, y: 0, vertical: false, value: 2, edge: 0 },
     scratch: {strokes: isFinal() ? normalizeStrokes(progress.draft?.strokes) : [], text: isFinal() && typeof progress.draft?.text === 'string' ? progress.draft.text : ''},
   };
   const width = Math.max(...lesson.polygon.map(p => p[0]));
   const height = Math.max(...lesson.polygon.map(p => p[1]));
-  layout = { scale: UNIT_SIZE, x: Math.max(isFinal() ? 75 : 30,(BOARD_WIDTH-(width+RULER_UNITS)*UNIT_SIZE)/2), y: Math.max(isFinal() ? 50 : 30,(BOARD_HEIGHT-(height+RULER_UNITS)*UNIT_SIZE)/2), viewX:0, viewY:0 };
+  layout = { scale: UNIT_SIZE, x: Math.max(isFinal() ? 75 : 30,(BOARD_WIDTH-(width+RULER_UNITS)*UNIT_SIZE)/2), y: Math.max(isFinal() ? 50 : 30,(BOARD_HEIGHT-(height+RULER_UNITS)*UNIT_SIZE)/2), viewX:0, viewY:0, rulerHeight:rulerHeight() };
   if (isFinal()) {
     state.ruler.y = height+2;
     state.work.total = typeof progress.draft?.total === 'string' ? progress.draft.total : '';
@@ -66,6 +67,7 @@ function startLesson(next, focus = false) {
         state.splitIndex = lesson.splits.length;
       }
     }
+    setRulerView();
   }
   saveProgress();
   render();
@@ -116,7 +118,7 @@ function target() {
 }
 
 function renderBoard() {
-  if (state.phase !== 'measure') {layout.viewX=0;layout.viewY=0;}
+  if (!['measure','final'].includes(state.phase)) {layout.viewX=0;layout.viewY=0;}
   board.setAttribute('viewBox',`${layout.viewX} ${layout.viewY} ${BOARD_WIDTH} ${BOARD_HEIGHT}`);
   const active = state.phase === 'measure' ? target() : null;
   const showParts = state.splitIndex >= 0;
@@ -193,20 +195,22 @@ function rulerSvg() {
   const length = RULER_UNITS;
   const width = length * s;
   const mobile = window.innerWidth <= 680;
-  const height = mobile ? 80 : 44;
+  const height = rulerHeight();
   const direction = vertical ? -1 : 1;
   const positionLabel = `Zero at ${Number(x.toFixed(1))} across, ${Number(y.toFixed(1))} down. ${vertical ? 'Vertical' : 'Horizontal'}. Use arrow keys to move one unit.`;
   let svg = `<g data-ruler transform="translate(${px} ${py}) rotate(${vertical ? 90 : 0})"><g class="ruler-body" data-drag="body" tabindex="0" role="button" aria-label="Move ruler. ${positionLabel}"><rect data-ruler-bar x="-14" y="${vertical ? -height-3 : 0}" width="${width + 28}" height="${height + 3}" rx="5" fill="#d3a343" opacity=".22" transform="translate(0 ${direction*4})"/><rect data-ruler-bar x="-14" y="${vertical ? -height : 0}" width="${width + 28}" height="${height}" rx="5" fill="#f4d984" fill-opacity=".94" stroke="#b89648" stroke-width="1.2"/>`;
   for (let i = 0; i <= length; i++) {
-    svg += `<g data-tick="${i}"><path d="M ${i*s} 0 v${direction*(mobile ? 23 : 14)}" stroke="#8b7036" stroke-width="1.3"/><text x="${i*s}" y="${direction*(mobile ? 56 : 32)}" text-anchor="middle" font-size="${mobile ? 24 : 18}" font-weight="700" fill="#755d2b">${i}</text></g>`;
+    svg += `<g data-tick="${i}"><path d="M ${i*s} 0 v${direction*(mobile ? 23 : 14)} M ${i*s} ${direction*height} v${-direction*(mobile ? 12 : 6)}" stroke="#8b7036" stroke-width="1.3"/><text x="${i*s}" y="${direction*(mobile ? 56 : 32)}" text-anchor="middle" font-size="${mobile ? 24 : 18}" font-weight="700" fill="#755d2b">${i}</text></g>`;
   }
-  svg += `</g><g data-drag="zero" class="ruler-body" tabindex="0" role="button" aria-label="Ruler zero handle. ${positionLabel}"><circle cx="0" cy="0" r="${mobile ? 56 : 24}" fill="transparent"/><circle cx="0" cy="0" r="${mobile ? 10 : 7}" fill="#fffdf1" stroke="#9d7b2d" stroke-width="2"/></g><g data-drag="marker" data-base-value="${value}" class="ruler-marker" tabindex="0" role="slider" aria-label="Ruler end marker" aria-orientation="${vertical ? 'vertical' : 'horizontal'}" aria-valuemin="0" aria-valuemax="${RULER_UNITS}" aria-valuenow="${value}" aria-valuetext="${value} ${lesson.unit}"><rect x="${value*s-(mobile ? 56 : 24)}" y="${vertical ? (mobile ? -144 : -height-18) : (mobile ? 32 : -24)}" width="${mobile ? 112 : 48}" height="${mobile ? 112 : height+42}" fill="transparent"/><path d="M ${value*s} ${-17*direction} v${direction*(height+25)}" stroke="#b35e43" stroke-width="2.5"/><path d="M ${value*s-8} ${-21*direction} h16 l-8 ${12*direction} Z" fill="#b35e43"/><circle cx="${value*s}" cy="${direction*(height+8)}" r="${mobile ? 9 : 6}" fill="#b35e43"/></g></g>`;
+  svg += `</g><g data-drag="zero" class="ruler-body" tabindex="0" role="button" aria-label="Ruler zero handle. ${positionLabel}"><circle cx="0" cy="0" r="${mobile ? 56 : 24}" fill="transparent"/><circle cx="0" cy="0" r="${mobile ? 10 : 7}" fill="#fffdf1" stroke="#9d7b2d" stroke-width="2"/></g><g data-drag="marker" data-base-value="${value}" class="ruler-marker" tabindex="0" role="slider" aria-label="Ruler end marker" aria-orientation="${vertical ? 'vertical' : 'horizontal'}" aria-valuemin="0" aria-valuemax="${RULER_UNITS}" aria-valuenow="${value}" aria-valuetext="${value} ${lesson.unit}"><rect x="${value*s-(mobile ? 56 : 24)}" y="${vertical ? (mobile ? -144 : -height-18) : (mobile ? 32 : -24)}" width="${mobile ? 112 : 48}" height="${mobile ? 112 : height+42}" fill="transparent"/><path d="M ${value*s} ${-17*direction} v${direction*(height+25)}" stroke="#b35e43" stroke-width="2.5"/><path d="M ${value*s-8} ${-21*direction} h16 l-8 ${12*direction} Z" fill="#b35e43"/><circle cx="${value*s}" cy="${direction*(height+8)}" r="${mobile ? 9 : 6}" fill="#b35e43"/></g>`;
+  // Extend the far zero's touch target behind zero, away from the marker.
+  svg += `<g data-drag="far-zero" class="ruler-body" transform="translate(0 ${direction*height})" tabindex="0" role="button" aria-label="Zero on the other ruler edge. Move with arrow keys."><rect x="${mobile ? -90 : -24}" y="${mobile ? -56 : -24}" width="${mobile ? 100 : 34}" height="${mobile ? 112 : 48}" fill="transparent"/><circle data-zero-edge="far" cx="0" cy="0" r="${mobile ? 10 : 7}" fill="#fffdf1" stroke="#9d7b2d" stroke-width="2"/></g></g>`;
   return svg;
 }
 
 function renderTools() {
   if (['measure','final'].includes(state.phase)) {
-    $('#toolbox').innerHTML = `<div class="tool-group">${state.phase === 'measure' ? '<button id="align-ruler" title="Place zero at the start of this side">⌖ Line up zero</button>' : ''}<button id="rotate-ruler" class="rotate-control" aria-label="Rotate ruler ${state.ruler.vertical ? 'horizontal' : 'vertical'}"><span class="rotate-icon" aria-hidden="true">${state.ruler.vertical ? '↕ → ↔' : '↔ → ↕'}</span> Rotate ${state.ruler.vertical ? 'horizontal' : 'vertical'}</button></div><div class="tool-group ruler-reading"><button id="shorter" aria-label="Move ruler marker back one unit">−</button><output id="ruler-value" aria-live="off">${state.ruler.value} ${lesson.unit}</output><button id="longer" aria-label="Move ruler marker forward one unit">+</button></div>${state.phase === 'final' ? `<div class="tool-group">${state.splitIndex < 0 ? '<button id="keyboard-cut">Draw cuts with keys</button>' : ''}<button id="clear-split">Clear cuts</button></div>` : ''}`;
+    $('#toolbox').innerHTML = `<div class="tool-group">${state.phase === 'measure' ? '<button id="align-ruler" title="Place zero at the start of this side">⌖ Line up zero</button>' : ''}<button id="rotate-ruler" class="rotate-control" aria-label="Rotate ruler ${state.ruler.vertical ? 'horizontal' : 'vertical'}"><span class="rotate-icon" aria-hidden="true">${state.ruler.vertical ? '↕ → ↔' : '↔ → ↕'}</span> Rotate ${state.ruler.vertical ? 'horizontal' : 'vertical'}</button></div><div class="tool-group"><button id="switch-ruler-edge" title="Move the ruler inside or outside using its other long edge">Switch edge</button></div><div class="tool-group ruler-reading"><button id="shorter" aria-label="Move ruler marker back one unit">−</button><output id="ruler-value" aria-live="off">${state.ruler.value} ${lesson.unit}</output><button id="longer" aria-label="Move ruler marker forward one unit">+</button></div>${state.phase === 'final' ? `<div class="tool-group">${state.splitIndex < 0 ? '<button id="keyboard-cut">Draw cuts with keys</button>' : ''}<button id="clear-split">Clear cuts</button></div>` : ''}`;
   } else if (state.phase === 'split' && !isRect()) {
     $('#toolbox').innerHTML = `<span class="small-tool-note">${state.splitIndex < 0 ? `${state.drawnLines.length ? state.drawnLines.length + ' cut drawn. Add the remaining cuts.' : 'Drag a cut, or use arrow keys + Enter.'}` : `${split().rects.length} rectangles.`}</span><div class="tool-group">${state.splitIndex < 0 ? '<button id="keyboard-cut">⌨ Draw with keys</button>' : ''}<button id="clear-split">↺ Clear cuts</button></div>`;
   } else {
@@ -261,7 +265,7 @@ function renderTask() {
   }
   if (phase === 'measure') {
     const t = target();
-    html = `<span class="part-badge"><i class="swatch" style="background:${colors[t.pieceIndex]}"></i>RECTANGLE ${letters[t.pieceIndex]} · ${state.measuring + 1} OF ${split().rects.length * 2} SIDES</span><h3 id="notebook-title">Measure the ${t.axis === 'w' ? 'width' : 'height'}.</h3><p class="task-description">Move the ruler’s <strong>0</strong> to one end of the dotted side. Slide the red marker to the other end. Read the ruler and write the length.</p><form id="measurement-form"><label class="field-label" for="length-answer">${t.axis === 'w' ? 'Width' : 'Height'} of rectangle ${letters[t.pieceIndex]}</label><div class="input-row"><input id="length-answer" class="answer-input" type="text" inputmode="numeric" autocomplete="off" placeholder="?" aria-describedby="feedback"><span class="input-unit">${lesson.unit}</span></div><button class="primary-button" type="submit">Record length <span>↗</span></button></form>${measurementLog()}<p class="saved-note">Tip: “Line up zero” places the ruler. The − and + buttons move its red marker.</p>`;
+    html = `<span class="part-badge"><i class="swatch" style="background:${colors[t.pieceIndex]}"></i>RECTANGLE ${letters[t.pieceIndex]} · ${state.measuring + 1} OF ${split().rects.length * 2} SIDES</span><h3 id="notebook-title">Measure the ${t.axis === 'w' ? 'width' : 'height'}.</h3><p class="task-description">Line up either long edge of the ruler with the dotted side. Put <strong>0</strong> at one end and the red marker at the other. The ruler can sit inside or outside the rectangle.</p><form id="measurement-form"><label class="field-label" for="length-answer">${t.axis === 'w' ? 'Width' : 'Height'} of rectangle ${letters[t.pieceIndex]}</label><div class="input-row"><input id="length-answer" class="answer-input" type="text" inputmode="numeric" autocomplete="off" placeholder="?" aria-describedby="feedback"><span class="input-unit">${lesson.unit}</span></div><button class="primary-button" type="submit">Record length <span>↗</span></button></form>${measurementLog()}<p class="saved-note">Tip: “Line up zero” places the ruler. “Switch edge” moves the ruler inside or outside. The − and + buttons move its red marker.</p>`;
   }
   if (phase === 'area') {
     html = `<h3 id="notebook-title">Calculate the area.</h3><p class="task-description">${split().rects.length === 1 ? 'You know the width and height. Multiply them to count all the squares inside.' : 'Use each rectangle’s own measurements. Multiply width × height to find its area.'}</p><form id="area-form">${split().rects.map((rect,i) => `<div class="area-row"><label for="area-${i}"><i class="swatch" style="background:${colors[i]}"></i>Rectangle ${letters[i]}</label><div class="equation"><span>${state.work.measurements[i].w}</span><span class="operator">×</span><span>${state.work.measurements[i].h}</span><span class="operator">=</span><input id="area-${i}" class="answer-input" type="text" inputmode="numeric" autocomplete="off" placeholder="?" value="${escape(state.work.areas[i] || '')}" aria-label="Area of rectangle ${letters[i]}" aria-describedby="feedback"><span class="area-unit">${unit()}</span></div>${index < 3 ? `<p class="equation-note">${rect.h} rows, with ${rect.w} squares in each row.</p>` : ''}</div>`).join('')}<button type="submit" class="primary-button">Check my ${split().rects.length === 1 ? 'area' : 'rectangle areas'} <span>→</span></button></form>`;
@@ -281,19 +285,29 @@ function renderTask() {
 
 function resetRuler() {
   const t = target();
-  const [x,y] = xy(t.a);
-  // Move the view for far-edge custom rectangles without changing its scale.
-  layout.viewX = t.axis === 'w' ? Math.max(0,x+RULER_UNITS*UNIT_SIZE+16-BOARD_WIDTH) : 0;
-  layout.viewY = t.axis === 'h' ? Math.max(0,y+RULER_UNITS*UNIT_SIZE+16-BOARD_HEIGHT) : 0;
-  state.ruler = { x: t.a[0], y: t.a[1]+2, vertical: false, value: 2 };
+  setRulerView();
+  state.ruler = { x: t.a[0], y: t.a[1]+2, vertical: false, value: 2, edge:0 };
   fitRuler();
+}
+
+function setRulerView() {
+  if (isFinal()) {
+    layout.viewX = Math.min(0,layout.x-rulerHeight()-25);
+    layout.viewY = Math.min(0,layout.y-rulerHeight()-25);
+    return;
+  }
+  const t = target();
+  const [x,y] = xy(t.a);
+  // Make room for either ruler edge without changing the drawing's scale.
+  layout.viewX = t.axis === 'w' ? Math.max(0,x+RULER_UNITS*UNIT_SIZE+16-BOARD_WIDTH) : Math.min(0,x-rulerHeight()-25);
+  layout.viewY = t.axis === 'h' ? Math.max(0,y+RULER_UNITS*UNIT_SIZE+16-BOARD_HEIGHT) : Math.min(0,y-rulerHeight()-25);
 }
 
 function fitRuler() {
   const r = state.ruler;
   // In the final problem, keep zero reachable across the whole shape;
   // the unused end of the free ruler can extend beyond the diagram.
-  const height = window.innerWidth <= 680 ? 80 : 44;
+  const height = rulerHeight();
   const px = layout.x+r.x*layout.scale;
   const py = layout.y+r.y*layout.scale;
   const minX = layout.viewX+25;
@@ -327,9 +341,7 @@ function errorsFor(fields) { return evaluateWork(lesson, split(), state.work).er
 function continuePhase(phase) { state.phase = phase; state.hints = 0; render(); const input = $('#task-panel input'); if (input && window.innerWidth > 680) input.focus({ preventScroll: true }); }
 
 function rulerAligned() {
-  const t = target();
-  const r = state.ruler;
-  return Math.abs(r.x - t.a[0]) < .35 && Math.abs(r.y - t.a[1]) < .35 && r.vertical === (t.axis === 'h') && r.value === t.length;
+  return rulerMatchesSide(target(),state.ruler,rulerHeight()/layout.scale);
 }
 
 function onSubmit(event) {
@@ -350,7 +362,7 @@ function onSubmit(event) {
   if (form.id === 'measurement-form') {
     const t = target();
     if (!rulerAligned()) {
-      showFeedback('First line up the ruler’s 0 with the start of the dotted side. Turn it if needed, then move the red marker to the other corner.');
+      showFeedback('First line up either long edge of the ruler with the dotted side. Put 0 at one end and the red marker at the other.');
       return;
     }
     if (!checkNumber($('#length-answer').value, t.length)) { showFeedback('Look where the red marker meets the ruler. Write that number. Count the spaces from 0, not the tick marks.'); return; }
@@ -414,7 +426,7 @@ function hint() {
   let text = lesson.tip;
   if (state.phase === 'measure') {
     const t = target();
-    text = state.hints === 1 ? 'The dotted side belongs to just one rectangle. Put 0 at one corner. Each space between two ruler marks is one unit.' : 'Use “Line up zero,” then move the red marker with + or − until it touches the other corner. Read the number at the marker.';
+    text = state.hints === 1 ? 'Either long edge of the ruler can touch the dotted side. Line up a white 0 circle with one corner. Each space between two marks is one unit.' : 'Use “Line up zero,” then move the red marker with + or − until it touches the other corner. Read the number at the marker.';
     if (state.hints > 2) text = `This ${t.axis === 'w' ? 'width' : 'height'} has ${t.length} unit spaces. Match that distance with your ruler, then record it.`;
   } else if (state.phase === 'area') {
     text = state.hints === 1 ? 'Imagine rows of unit squares. Width tells how many squares fit in each row. Height tells how many equal rows to count.' : `For rectangle A, add ${split().rects[0].w} once for each of its ${split().rects[0].h} rows. That is what ${split().rects[0].w} × ${split().rects[0].h} means.`;
@@ -434,8 +446,20 @@ document.addEventListener('click', event => {
   switch (button.id) {
     case 'begin-measuring': state.hints = 0; state.work.measurements = []; state.measuring = 0; state.phase = 'measure'; resetRuler(); render(); if (window.innerWidth <= 680) scrollToBoard(); break;
     case 'grid-toggle': state.grid = !state.grid; if (lesson.independent && state.grid) state.supported = true; saveFinalDraft(); $('#grid-toggle').setAttribute('aria-pressed', state.grid); $('#grid-toggle span').textContent = state.grid ? 'Grid on' : 'Grid off'; renderBoard(); break;
-    case 'align-ruler': { const t = target(); state.ruler.x = t.a[0]; state.ruler.y = t.a[1]; state.ruler.vertical = t.axis === 'h'; if (lesson.independent) state.supported = true; renderBoard(); renderTools(); break; }
-    case 'rotate-ruler': state.ruler.vertical = !state.ruler.vertical; fitRuler(); renderBoard(); renderTools(); break;
+    case 'align-ruler': { const t = target(); state.ruler.x = t.a[0]; state.ruler.y = t.a[1]; state.ruler.vertical = t.axis === 'h'; state.ruler.edge = 0; if (lesson.independent) state.supported = true; renderBoard(); renderTools(); break; }
+    case 'rotate-ruler': {
+      const r = state.ruler, offset = r.edge*rulerHeight()/layout.scale;
+      r.x += r.vertical ? offset : -offset;
+      r.y += r.vertical ? -offset : offset;
+      r.vertical = !r.vertical;
+      fitRuler(); renderBoard(); renderTools(); break;
+    }
+    case 'switch-ruler-edge': {
+      const r = state.ruler;
+      r[r.vertical ? 'x' : 'y'] += (r.edge ? 1 : -1)*rulerHeight()/layout.scale;
+      r.edge = 1-r.edge;
+      fitRuler(); updateRuler(); break;
+    }
     case 'shorter': state.ruler.value = Math.max(0,state.ruler.value - 1); updateRuler(); break;
     case 'longer': state.ruler.value = Math.min(RULER_UNITS,state.ruler.value + 1); updateRuler(); break;
     case 'show-splits': state.supported = true; state.showChoices = true; renderTask(); break;
@@ -508,6 +532,8 @@ board.addEventListener('pointerdown', event => {
   const handle = event.target.closest('[data-drag]');
   const point = eventPoint(event);
   if (handle && ['measure','final'].includes(state.phase)) {
+    if (handle.dataset.drag === 'zero') state.ruler.edge = 0;
+    if (handle.dataset.drag === 'far-zero') state.ruler.edge = 1;
     drag = { kind: handle.dataset.drag, start: point, ruler: { ...state.ruler } };
     board.setPointerCapture(event.pointerId);
   } else if (['split','final'].includes(state.phase) && !isRect() && state.splitIndex < 0) {
@@ -548,8 +574,16 @@ board.addEventListener('pointerup', event => {
     finishCut([drag.start,drag.end]);
   } else {
     const t = state.phase === 'measure' ? target() : null;
-    if (t && Math.abs(state.ruler.x-t.a[0]) < .45) state.ruler.x = t.a[0];
-    if (t && Math.abs(state.ruler.y-t.a[1]) < .45) state.ruler.y = t.a[1];
+    if (t && state.ruler.vertical === (t.axis === 'h')) {
+      const along = state.ruler.vertical ? 'y' : 'x';
+      const across = state.ruler.vertical ? 'x' : 'y';
+      const startAlong = t.a[state.ruler.vertical ? 1 : 0];
+      const startAcross = t.a[state.ruler.vertical ? 0 : 1];
+      if (Math.abs(state.ruler[along]-startAlong) < .45) state.ruler[along] = startAlong;
+      for (const [edge,offset] of [0,-rulerHeight()/layout.scale].entries()) {
+        if (Math.abs(state.ruler[across]-startAcross-offset) < .45) {state.ruler[across]=startAcross+offset;state.ruler.edge=edge;break;}
+      }
+    }
   }
   drag = null;
   if (board.hasPointerCapture(event.pointerId)) board.releasePointerCapture(event.pointerId);
@@ -583,10 +617,21 @@ board.addEventListener('keydown', event => {
   const handle = event.target.closest('[data-drag]');
   if (!handle || !['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)) return;
   event.preventDefault();
+  if (handle.dataset.drag === 'zero') state.ruler.edge = 0;
+  if (handle.dataset.drag === 'far-zero') state.ruler.edge = 1;
   if (handle.dataset.drag === 'marker') state.ruler.value = Math.min(RULER_UNITS,Math.max(0,state.ruler.value + (['ArrowRight','ArrowDown'].includes(event.key) ? 1 : -1)));
   else { if (event.key === 'ArrowLeft') state.ruler.x--; if (event.key === 'ArrowRight') state.ruler.x++; if (event.key === 'ArrowUp') state.ruler.y--; if (event.key === 'ArrowDown') state.ruler.y++; fitRuler(); }
   updateRuler(handle.dataset.drag);
 });
 
 startLesson(index);
-window.addEventListener('resize', () => { if (!drag) renderBoard(); });
+window.addEventListener('resize', () => {
+  if (drag) return;
+  if (['measure','final'].includes(state.phase)) {
+    if (state.ruler.edge) state.ruler[state.ruler.vertical ? 'x' : 'y'] += (layout.rulerHeight-rulerHeight())/layout.scale;
+    setRulerView();
+    fitRuler();
+  }
+  layout.rulerHeight = rulerHeight();
+  renderBoard();
+});
