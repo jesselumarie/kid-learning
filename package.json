@@ -1,0 +1,19 @@
+{
+  "name": "kid-learning",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A hands-on area workshop for curious kids.",
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "test": "node --test test/*.test.js",
+    "test:browser": "node test/browser.mjs",
+    "check": "node --check site/app.js && node --check site/math.js && node --check site/lessons.js && npm test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}
