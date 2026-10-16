@@ -93,7 +93,9 @@ function target() {
 function renderBoard() {
   const active = state.phase === 'measure' ? target() : null;
   const showParts = state.splitIndex >= 0;
-  let svg = `<title id="board-title">${escape(lesson.title)}: ${isRect() ? 'rectangle' : 'composite shape'}</title><desc id="board-desc">${state.phase === 'measure' ? `Measure the ${active.axis === 'w' ? 'width' : 'height'} of rectangle ${letters[active.pieceIndex]}. Drag the yellow ruler. You can also use Line up zero and the minus and plus buttons.` : 'Split the shape into rectangles. Each grid square is one square unit.'}</desc><defs><pattern id="unit-grid" width="${layout.scale}" height="${layout.scale}" patternUnits="userSpaceOnUse" x="${layout.x}" y="${layout.y}"><path d="M ${layout.scale} 0 L 0 0 0 ${layout.scale}" fill="none" stroke="#48735e" stroke-opacity=".25" stroke-width="1.2"/></pattern><clipPath id="shape-clip"><polygon points="${pointsString(lesson.polygon)}"/></clipPath></defs>`;
+  const boundary = `Coordinates count ${lesson.unit} across, then down from the top-left origin. The shape boundary joins these corners in order and returns to the start: ${lesson.polygon.map(([x,y]) => `(${x}, ${y})`).join('; ')}.`;
+  const taskDescription = active ? `Measure rectangle ${letters[active.pieceIndex]} ${active.axis === 'w' ? 'width' : 'height'}, from (${active.a.join(', ')}) to (${active.b.join(', ')}). Focus the ruler zero handle and use arrows to move it. Use Turn to change direction. Focus the end marker and use arrows to change its reading.` : 'To draw with keys, focus this table. Arrow keys move the cut cursor; Enter starts or finishes a cut; Escape cancels it.';
+  let svg = `<title id="board-title">${escape(lesson.title)}: ${isRect() ? 'rectangle' : 'composite shape'}</title><desc id="board-desc">${boundary} ${taskDescription}</desc><defs><pattern id="unit-grid" width="${layout.scale}" height="${layout.scale}" patternUnits="userSpaceOnUse" x="${layout.x}" y="${layout.y}"><path d="M ${layout.scale} 0 L 0 0 0 ${layout.scale}" fill="none" stroke="#48735e" stroke-opacity=".25" stroke-width="1.2"/></pattern><clipPath id="shape-clip"><polygon points="${pointsString(lesson.polygon)}"/></clipPath></defs>`;
   svg += `<polygon points="${pointsString(lesson.polygon.map(([x,y]) => [x + .11,y + .13]))}" fill="#e8e9da"/>`;
   if (showParts) split().rects.forEach((rect, i) => { svg += rectSvg(rect, `fill="${colors[i]}" fill-opacity="${active && active.pieceIndex !== i ? '.5' : '.9'}"`); });
   else svg += `<polygon points="${pointsString(lesson.polygon)}" fill="${colors[0]}" fill-opacity=".85"/>`;
@@ -151,11 +153,12 @@ function rulerSvg() {
   const width = length * s;
   const mobile = window.innerWidth <= 680;
   const height = mobile ? 62 : 40;
-  let svg = `<g transform="translate(${px} ${py}) rotate(${vertical ? 90 : 0})"><g class="ruler-body" data-drag="body" tabindex="0" role="button" aria-label="Move ruler. Use arrow keys to move it one unit."><rect x="-14" y="0" width="${width + 28}" height="${height + 3}" rx="5" fill="#d3a343" opacity=".22" transform="translate(0 4)"/><rect x="-14" y="0" width="${width + 28}" height="${height}" rx="5" fill="#f4d984" fill-opacity=".94" stroke="#b89648" stroke-width="1.2"/>`;
+  const positionLabel = `Zero at ${Number(x.toFixed(1))} across, ${Number(y.toFixed(1))} down. ${vertical ? 'Vertical' : 'Horizontal'}. Use arrow keys to move one unit.`;
+  let svg = `<g transform="translate(${px} ${py}) rotate(${vertical ? 90 : 0})"><g class="ruler-body" data-drag="body" tabindex="0" role="button" aria-label="Move ruler. ${positionLabel}"><rect x="-14" y="0" width="${width + 28}" height="${height + 3}" rx="5" fill="#d3a343" opacity=".22" transform="translate(0 4)"/><rect x="-14" y="0" width="${width + 28}" height="${height}" rx="5" fill="#f4d984" fill-opacity=".94" stroke="#b89648" stroke-width="1.2"/>`;
   for (let i = 0; i <= length; i++) {
     svg += `<path d="M ${i*s} 0 v${mobile ? 19 : 13}" stroke="#8b7036" stroke-width="1.3"/><text x="${i*s}" y="${mobile ? 46 : 29}" text-anchor="middle" font-size="${mobile ? 22 : 14}" font-weight="700" fill="#755d2b">${i}</text>`;
   }
-  svg += `</g><g data-drag="zero" class="ruler-body" tabindex="0" role="button" aria-label="Ruler zero handle. Use arrow keys to move the ruler."><circle cx="0" cy="0" r="${mobile ? 42 : 24}" fill="transparent"/><circle cx="0" cy="0" r="${mobile ? 10 : 7}" fill="#fffdf1" stroke="#9d7b2d" stroke-width="2"/></g><g data-drag="marker" class="ruler-marker" tabindex="0" role="slider" aria-label="Ruler end marker" aria-valuemin="0" aria-valuemax="18" aria-valuenow="${value}" aria-valuetext="${value} ${lesson.unit}"><rect x="${value*s-(mobile ? 42 : 24)}" y="-24" width="${mobile ? 84 : 48}" height="${height+42}" fill="transparent"/><path d="M ${value*s} -17 v${height+25}" stroke="#b35e43" stroke-width="2.5"/><path d="M ${value*s-8} -21 h16 l-8 12 Z" fill="#b35e43"/><circle cx="${value*s}" cy="${height+8}" r="${mobile ? 9 : 6}" fill="#b35e43"/></g></g>`;
+  svg += `</g><g data-drag="zero" class="ruler-body" tabindex="0" role="button" aria-label="Ruler zero handle. ${positionLabel}"><circle cx="0" cy="0" r="${mobile ? 42 : 24}" fill="transparent"/><circle cx="0" cy="0" r="${mobile ? 10 : 7}" fill="#fffdf1" stroke="#9d7b2d" stroke-width="2"/></g><g data-drag="marker" class="ruler-marker" tabindex="0" role="slider" aria-label="Ruler end marker" aria-orientation="${vertical ? 'vertical' : 'horizontal'}" aria-valuemin="0" aria-valuemax="18" aria-valuenow="${value}" aria-valuetext="${value} ${lesson.unit}"><rect x="${value*s-(mobile ? 42 : 24)}" y="-24" width="${mobile ? 84 : 48}" height="${height+42}" fill="transparent"/><path d="M ${value*s} -17 v${height+25}" stroke="#b35e43" stroke-width="2.5"/><path d="M ${value*s-8} -21 h16 l-8 12 Z" fill="#b35e43"/><circle cx="${value*s}" cy="${height+8}" r="${mobile ? 9 : 6}" fill="#b35e43"/></g></g>`;
   return svg;
 }
 
@@ -215,7 +218,7 @@ function renderTask() {
 
 function resetRuler() {
   const t = target();
-  state.ruler = { x: t.a[0], y: Math.min(t.a[1] + 1.8, (450 - layout.y) / layout.scale), vertical: false, value: 2 };
+  state.ruler = { x: t.a[0], y: Math.min(t.a[1] + 2, Math.floor((450 - layout.y) / layout.scale)), vertical: false, value: 2 };
 }
 
 function showFeedback(message, success = false) {

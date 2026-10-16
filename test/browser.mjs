@@ -31,6 +31,13 @@ async function screenPoint(page, lesson, point) {
 async function dragBetween(page, a, b) {
   await page.mouse.move(a.x,a.y); await page.mouse.down(); await page.mouse.move(b.x,b.y,{ steps: 10 }); await page.mouse.up();
 }
+async function touchDrag(page, a, b) {
+  const session = await page.context().newCDPSession(page);
+  await session.send('Input.dispatchTouchEvent',{ type: 'touchStart', touchPoints: [{ x:a.x,y:a.y }] });
+  for (let i=1;i<=10;i++) await session.send('Input.dispatchTouchEvent',{ type: 'touchMove', touchPoints: [{ x:a.x+(b.x-a.x)*i/10,y:a.y+(b.y-a.y)*i/10 }] });
+  await session.send('Input.dispatchTouchEvent',{ type: 'touchEnd', touchPoints: [] });
+  await session.detach();
+}
 async function drawCuts(page, lesson, lines) {
   await page.locator('#board').scrollIntoViewIfNeeded();
   for (const [a,b] of lines) await dragBetween(page, await screenPoint(page,lesson,a), await screenPoint(page,lesson,b));
@@ -44,10 +51,11 @@ async function measureSide(page, lesson, rect, axis, { manual = true, touch = fa
     if (axis === 'h') await page.locator('#rotate-ruler').click();
     await page.locator('#board').scrollIntoViewIfNeeded();
     const box = await page.locator('[data-drag="zero"] circle:last-child').boundingBox();
-    await dragBetween(page,{ x: box.x+box.width/2, y: box.y+box.height/2 },await screenPoint(page,lesson,a));
+    const move = touch ? touchDrag : dragBetween;
+    await move(page,{ x: box.x+box.width/2, y: box.y+box.height/2 },await screenPoint(page,lesson,a));
     const marker = await page.locator('[data-drag="marker"] path').first().evaluate(path => { const p = path.getPointAtLength(0).matrixTransform(path.getScreenCTM()); return { x: p.x, y: p.y }; });
     const end = await screenPoint(page,lesson,b);
-    await dragBetween(page,marker,end);
+    await move(page,marker,end);
   } else {
     if (touch) await page.locator('#align-ruler').tap(); else await page.locator('#align-ruler').click();
     while (Number((await page.locator('#ruler-value').textContent()).split(' ')[0]) !== value) {
@@ -79,6 +87,8 @@ try {
   await page.locator('[data-cell="0-0"]').click();
   await page.screenshot({ path: 'test-results/desktop-explore.png', fullPage: true });
   await page.locator('#begin-measuring').click();
+  assert.match(await page.locator('#board-desc').textContent(), /from \(0, 3\) to \(4, 3\)/);
+  assert.match(await page.locator('[data-drag="zero"]').getAttribute('aria-label'), /Zero at 0 across/);
   await page.locator('#length-answer').fill('4');
   await page.locator('#measurement-form button').click();
   assert.match(await page.locator('#feedback').textContent(), /First line up/);
@@ -160,7 +170,7 @@ try {
   await mobile.locator('#begin-measuring').tap();
   assert.ok((await mobile.locator('#board').boundingBox()).y >= 0, 'New measurement brings mobile board into view');
   await mobile.screenshot({ path: 'test-results/mobile-measure.png', fullPage: true });
-  for (const rect of LESSONS[10].splits[0].rects) for (const axis of ['w','h']) await measureSide(mobile,LESSONS[10],rect,axis,{manual:false,touch:true});
+  for (const [i,rect] of LESSONS[10].splits[0].rects.entries()) for (const axis of ['w','h']) await measureSide(mobile,LESSONS[10],rect,axis,{manual:i === 0,touch:true});
   await finishCalculations(mobile,LESSONS[10],LESSONS[10].splits[0]);
   assert.equal(await mobile.locator('.support-tag').textContent(),'COMPLETED WITH PRACTICE');
   assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),true,'No mobile horizontal page overflow');
@@ -172,7 +182,7 @@ try {
   await mobile.locator('#reset-progress').tap();
   await mobile.locator('.dialog-close').tap();
   assert.match(await mobile.locator('#progress-text').textContent(), /0 of 12/);
-  console.log('PASS: touch controls, mobile layout, supported completion, persistence, and reset');
+  console.log('PASS: touch dragging and tap controls, mobile layout, supported completion, persistence, and reset');
 
   const blockedContext = await browser.newContext();
   await blockedContext.addInitScript(() => { Object.defineProperty(window,'localStorage',{ get() { throw new DOMException('Unavailable','SecurityError'); } }); });
