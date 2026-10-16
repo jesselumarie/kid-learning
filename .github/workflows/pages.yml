@@ -27,6 +27,7 @@ jobs:
       - run: npm run check
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      - run: node test/touch-control.mjs
       - run: npm run test:browser
       - uses: actions/upload-artifact@v4
         if: failure()
