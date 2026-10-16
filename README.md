@@ -1,6 +1,6 @@
 # Kid Learning · Area practice
 
-Area practice with a draggable ruler, shape splits, recorded measurements, and area calculations. The final problem has a scratchpad and a final-answer field.
+Area practice with a draggable ruler, shape splits, recorded measurements, and area calculations. The final problem has a scratchpad and a final-answer field. A printable grade sheet records the results and submitted final work.
 
 **Site:** [Third grade: Area practice](https://jesselumarie.github.io/kid-learning/third-grade/area/)
 
@@ -54,6 +54,14 @@ Draw cuts with a pointer, or choose “Draw with keys”: arrow keys position th
 
 The final problem starts with a blank drawing pad and a typing area. Pen, eraser, undo, and clear controls are available. Work survives resizing and is saved on this device. To finish, add written work and submit the total with square units. The app checks the total and units; a parent or teacher should review the written calculations.
 
+## Grade sheet
+
+The grade sheet opens when all 12 lessons are complete. Open it anytime using **Grade sheet** in the header or **View grade sheet** after the final problem. **Print / Save PDF** opens the browser print dialog.
+
+The sheet shows each lesson’s latest completed attempt, total area, in-app help, corrections, and hints. Corrections include ruler and cut feedback; they are not a percentage grade. Earlier completions without these details are marked as older records. The final problem includes its submitted diagram, typed calculations, and drawing, followed by space for parent or teacher review. Written calculations need human review.
+
+Completed work is saved separately from unfinished work, so starting another try does not change the sheet until that try is completed. Results stay in this browser; print or save a PDF to share them. Resetting saved progress also removes grade-sheet results and final work.
+
 ## Privacy
 
 Progress and final-problem work are stored only in this browser’s `localStorage`. It does not sync between devices. The parent guide can reset it. The app has no accounts, analytics, ads, external fonts, or uploaded student work. GitHub Pages serves the static files; normal hosting request logs are controlled by GitHub.
@@ -72,5 +80,6 @@ In the repository’s **Settings → Pages**, select **GitHub Actions** as the s
 - Complete an independent lesson with and without help; verify the progress summary distinguishes them.
 - Reload after progress, revisit a completed lesson, and test the reset control.
 - Write on the final scratchpad, erase and undo, resize, reload, and submit a final answer with square units.
+- Open the grade sheet, check recorded results and submitted work, start a new try, and verify the previous completed work remains. Review Print / Save PDF pagination.
 - Check a narrow phone viewport, touch input, visible keyboard focus, and reduced motion.
 - Open the deployed lesson directly at `/kid-learning/third-grade/area/`, and check that the project homepage redirects there.

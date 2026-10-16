@@ -119,6 +119,7 @@ async function finishCalculations(page, lesson, plan) {
   await page.locator(`input[name="reason"][value="${lesson.reason.choices.findIndex(choice => choice.correct)}"]`).check();
   await page.locator('#reason-form button').click();
   assert.equal(await page.locator('#next-lesson').count(), 1, `Completed ${lesson.id}`);
+  if (await page.locator('#grade-sheet').isVisible()) await page.locator('#close-grade-sheet').click();
 }
 
 async function rulerDimensions(page) {
@@ -219,6 +220,7 @@ try {
       assert.equal(await canvasHasInk(page),false);
       assert.deepEqual(await rulerDimensions(page),fixedRuler,'Final ruler has the same fixed dimensions');
       await page.screenshot({path:'test-results/final-blank.png',fullPage:true});
+      await drawOnScratchpad(page);
       await page.locator('#scratch-text').fill('4 × 3 = 12\n12 × 5 = 60\n12 + 60 = 72 square feet');
       await page.locator('#final-answer').fill('72');
       await page.locator('#final-unit').selectOption('ft²');
@@ -227,6 +229,21 @@ try {
       assert.equal(await page.locator('#final-answer').inputValue(),'72');
       await page.locator('#final-form button').click();
       assert.match(await page.locator('.final-result').textContent(),/Answer correct: 72 ft²/);
+      assert.equal(await page.locator('#grade-sheet').isVisible(),true,'Completing all lessons opens the grade sheet');
+      assert.equal(await page.locator('[data-grade-lesson]').count(),12);
+      assert.match(await page.locator('[data-grade-lesson="first-patch"]').textContent(),/12 cm²/);
+      assert.equal((await page.locator('[data-grade-lesson="first-patch"] td').nth(2).textContent()).trim(),'6','Requested corrections are recorded');
+      assert.match(await page.locator('.grade-written-work').textContent(),/12 \+ 60 = 72/);
+      assert.equal(await page.locator('.grade-drawing').count(),1,'Grade sheet includes the submitted drawing and typed work');
+      await page.evaluate(() => {window.printRequested=false;window.print=()=>{window.printRequested=true;};});
+      await page.locator('#print-grade-sheet').click();
+      assert.equal(await page.evaluate(() => window.printRequested),true,'Print button requests the browser print dialog');
+      await page.screenshot({path:'test-results/grade-sheet-desktop.png',fullPage:true});
+      await page.pdf({path:'test-results/grade-sheet.pdf',format:'Letter',printBackground:true});
+      await page.reload();
+      await page.locator('#view-grade-sheet').click();
+      assert.match(await page.locator('.grade-written-work').textContent(),/12 \+ 60 = 72/,'Completed grade sheet survives reload');
+      await page.locator('#close-grade-sheet').click();
       console.log('PASS: independent final problem, blank work area, saved calculations, answer and units');
       continue;
     }
@@ -266,7 +283,7 @@ try {
   }
   assert.match(await page.locator('#progress-text').textContent(), /12 of 12/);
   await page.locator('#grownups').click();
-  assert.match(await page.locator('#parent-progress').textContent(), /3 of 3 independent problems completed without help/);
+  assert.match(await page.locator('#parent-progress').textContent(), /3 of 3 independent problems completed without in-app help/);
   await page.locator('.dialog-close').click();
   await page.screenshot({ path: 'test-results/completed.png', fullPage: true });
 
@@ -337,14 +354,33 @@ try {
   await finalPage.locator('#final-form button').click();
   assert.match(await finalPage.locator('#feedback').textContent(),/square units/);
   await finalPage.locator('#final-unit').selectOption('ft²');
+  await finalPage.locator('#hint-button').click();
+  await finalPage.locator('#hint-button').click();
+  await finalPage.locator('#scratch-text').fill('12 × 5 = 60\n4 × 3 = 12\n60 + 12 = 72');
+  await finalPage.reload();
   await finalPage.locator('#final-form button').click();
   assert.match(await finalPage.locator('.final-result').textContent(),/Answer correct/);
+  await finalPage.locator('#show-grade-sheet').click();
+  assert.match(await finalPage.locator('[data-grade-lesson="final-problem"]').textContent(),/Complete with help/);
+  assert.equal((await finalPage.locator('[data-grade-lesson="final-problem"] td').nth(2).textContent()).trim(),'3');
+  assert.equal((await finalPage.locator('[data-grade-lesson="final-problem"] td').nth(3).textContent()).trim(),'2','Cumulative hint use survives reload');
+  const submittedDrawing = await finalPage.locator('.grade-drawing').getAttribute('src');
+  assert.match(submittedDrawing,/^data:image\/png;base64,/);
+  assert.equal(await finalPage.locator('[data-grade-cut]').count(),2);
+  await finalPage.screenshot({path:'test-results/grade-sheet-work.png',fullPage:true});
+  await finalPage.locator('#close-grade-sheet').click();
   await finalPage.locator('#grownups').click();
-  assert.match(await finalPage.locator('#parent-progress').textContent(),/0 of 3 independent problems completed without help/);
+  assert.match(await finalPage.locator('#parent-progress').textContent(),/0 of 3 independent problems completed without in-app help/);
   await finalPage.locator('.dialog-close').click();
   await finalPage.locator('#replay').click();
   assert.equal(await canvasHasInk(finalPage),false);
   assert.equal(await finalPage.locator('#final-answer').inputValue(),'');
+  await finalPage.locator('#scratch-text').fill('A new unfinished attempt');
+  await finalPage.locator('#view-grade-sheet').click();
+  assert.equal(await finalPage.locator('.grade-drawing').getAttribute('src'),submittedDrawing,'Retrying keeps the completed drawing');
+  assert.match(await finalPage.locator('.grade-written-work').textContent(),/60 \+ 12 = 72/,'Retrying keeps the completed calculations');
+  await finalPage.locator('#close-grade-sheet').click();
+  assert.equal(await finalPage.locator('#scratch-text').inputValue(),'A new unfinished attempt','Viewing the sheet keeps the draft intact');
   console.log('PASS: final work required, eraser, undo, resize, reload, incorrect totals/units, and restart');
   await assessment.close();
   activePage = page;
@@ -377,7 +413,7 @@ try {
   await mobile.reload();
   assert.match(await mobile.locator('#progress-text').textContent(), /1 of 12/);
   await touchTap(mobile,mobile.locator('#grownups'));
-  assert.match(await mobile.locator('#parent-progress').textContent(), /0 of 3 independent problems completed without help/);
+  assert.match(await mobile.locator('#parent-progress').textContent(), /0 of 3 independent problems completed without in-app help/);
   await touchTap(mobile,mobile.locator('#reset-progress'));
   await touchTap(mobile,mobile.locator('#reset-progress'));
   await touchTap(mobile,mobile.locator('.dialog-close'));
@@ -418,6 +454,11 @@ try {
   await mobile.locator('#final-unit').selectOption('ft²');
   await touchTap(mobile,mobile.locator('#final-form button'));
   assert.match(await mobile.locator('.final-result').textContent(),/Answer correct: 72 ft²/);
+  await touchTap(mobile,mobile.locator('#show-grade-sheet'));
+  assert.equal(await mobile.locator('.grade-drawing').count(),1);
+  assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),true,'Phone grade sheet fits viewport');
+  await mobile.screenshot({path:'test-results/grade-sheet-mobile.png',fullPage:true});
+  await touchTap(mobile,mobile.locator('#close-grade-sheet'));
   assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),true,'Final mobile page fits viewport');
   console.log('PASS: native touch scratchpad drawing, clear, restored work, and final submission');
   await touchTap(mobile,mobile.locator('[data-lesson="3"]'));
@@ -435,6 +476,33 @@ try {
   assert.match(await blocked.locator('#notebook-title').textContent(), /Count square units/);
   await blocked.locator('#grownups').click();
   assert.match(await blocked.locator('#parent-progress').textContent(), /storage is unavailable/);
+  await blocked.locator('.dialog-close').click();
+  await blocked.locator('[data-lesson="11"]').click();
+  await blocked.locator('#scratch-text').fill('12 × 5 + 4 × 3 = 72');
+  await blocked.locator('#final-answer').fill('72');
+  await blocked.locator('#final-unit').selectOption('ft²');
+  await blocked.locator('#final-form button').click();
+  await blocked.locator('#show-grade-sheet').click();
+  assert.match(await blocked.locator('.grade-save-status').textContent(),/only while this page is open/);
+  assert.equal(await blocked.locator('#print-grade-sheet').isEnabled(),true,'Session-only results can still be printed');
+
+  const legacyContext = await browser.newContext();
+  await legacyContext.addInitScript(() => localStorage.setItem('kid-learning-area-v1',JSON.stringify({current:0,completed:{'first-patch':{independent:false,completedAt:'2026-10-16T12:00:00Z'},'final-problem':{independent:true,finalWork:true,completedAt:'2026-10-16T12:00:00Z'}},draft:{lessonId:'final-problem',text:'Unsubmitted work must not appear as graded'}})));
+  const legacy = await legacyContext.newPage();
+  await legacy.goto(url);
+  await legacy.locator('#view-grade-sheet').click();
+  assert.match(await legacy.locator('[data-grade-lesson="first-patch"]').textContent(),/older record/);
+  assert.match(await legacy.locator('#grade-sheet').textContent(),/Written work was not saved/);
+  assert.doesNotMatch(await legacy.locator('#grade-sheet').textContent(),/Unsubmitted work must not appear as graded/);
+  await legacy.locator('#close-grade-sheet').click();
+  await legacy.evaluate(() => {Storage.prototype.setItem=()=>{throw new DOMException('Full','QuotaExceededError');};});
+  await legacy.locator('#grownups').click();
+  await legacy.locator('#reset-progress').click();
+  await legacy.locator('#reset-progress').click();
+  assert.match(await legacy.locator('#reset-status').textContent(),/Progress cleared for this session/,'A failed save cannot claim that saved results were reset');
+  assert.equal(await legacy.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('kid-learning-area-v1')).completed).length),2,'A failed storage write leaves the saved results intact');
+  await legacyContext.close();
+  console.log('PASS: grade sheets, recorded attempts, immutable written work, print control, legacy data, and session-only results');
   console.log('PASS: app remains usable when browser storage is unavailable');
   assert.deepEqual(failures,[],'No runtime or asset errors');
   console.log('All browser checks passed.');

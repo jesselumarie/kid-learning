@@ -8,15 +8,16 @@
   <title>Area practice · Kid Learning</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./report.css">
   <script type="module" src="./app.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#workspace">Skip to the activity</a>
   <header class="site-header">
     <a class="brand" href="./" aria-label="Kid Learning home"><svg viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="14" height="14" rx="3" fill="#32766c"/><rect x="19" y="1" width="14" height="14" rx="3" fill="#efb84c"/><rect x="1" y="19" width="14" height="14" rx="3" fill="#e68770"/><rect x="19" y="19" width="14" height="14" rx="3" fill="#e8e8dc"/></svg>Kid Learning</a>
-    <button class="text-button" id="grownups">For parents <span aria-hidden="true">↗</span></button>
+    <div class="header-actions"><button class="text-button" id="view-grade-sheet">Grade sheet</button><button class="text-button" id="grownups">For parents <span aria-hidden="true">↗</span></button></div>
   </header>
-  <div class="app-shell">
+  <div class="app-shell" id="activity-shell">
     <aside class="journey" aria-label="Lessons">
       <div class="eyebrow">MATH</div>
       <h1>Area <span>practice</span></h1>
@@ -40,7 +41,8 @@
       <div class="bottom-note"><span aria-hidden="true">↳</span><p id="big-idea">Area is the space a shape covers. We measure it in square units.</p><button class="text-button" id="restart-lesson">Start this lesson again</button></div>
     </main>
   </div>
-  <dialog id="parent-dialog"><button class="dialog-close" aria-label="Close parent guide">×</button><div class="eyebrow">FOR PARENTS</div><h2>How to help</h2><p>The lessons start with counting unit squares and build to finding the area of shapes made from several rectangles. Your child will split shapes, measure sides, multiply, and add.</p><ul><li><strong>Check each rectangle’s measurements.</strong> Ask “Which rectangle does that side belong to?” A smaller piece may not use the whole shape’s length.</li><li><strong>Check for gaps and overlaps.</strong> Every square inside the shape should belong to exactly one piece.</li><li><strong>Check the final answer.</strong> It should include every rectangle’s area and use square units.</li></ul><p>Later lessons start with the grid off. “Completed without help” means no hints, grid help, ruler alignment help, or corrections were used. Try a problem again another day to check what your child remembers.</p><p>The final problem has a blank scratchpad and a separate answer field. Your child can draw or type calculations. The app checks the final number and units; please review the written work yourself.</p><div id="parent-progress"></div><p class="small-print">Progress stays in this browser on this device. No accounts, ads, tracking, or uploaded work. The ruler uses model units; it is not a physical screen ruler.</p><button id="reset-progress" class="secondary-button">Reset saved progress</button><p id="reset-status" role="status"></p></dialog>
+  <section id="grade-sheet" aria-labelledby="grade-sheet-title" hidden></section>
+  <dialog id="parent-dialog"><button class="dialog-close" aria-label="Close parent guide">×</button><div class="eyebrow">FOR PARENTS</div><h2>How to help</h2><p>The lessons start with counting unit squares and build to finding the area of shapes made from several rectangles. Your child will split shapes, measure sides, multiply, and add.</p><ul><li><strong>Check each rectangle’s measurements.</strong> Ask “Which rectangle does that side belong to?” A smaller piece may not use the whole shape’s length.</li><li><strong>Check for gaps and overlaps.</strong> Every square inside the shape should belong to exactly one piece.</li><li><strong>Check the final answer.</strong> It should include every rectangle’s area and use square units.</li></ul><p>Later lessons start with the grid off. Independent problems record in-app help, including hints, example splits, grid help, ruler alignment, and corrections. Try a problem again another day to check what your child remembers.</p><p>The final problem has a blank scratchpad and a separate answer field. Your child can draw or type calculations. The app checks the final number and units; please review the written work yourself. The grade sheet includes completed results and final work, with a Print / Save PDF button.</p><div id="parent-progress"></div><p class="small-print">Progress stays in this browser on this device. No accounts, ads, tracking, or uploaded work. The ruler uses model units; it is not a physical screen ruler.</p><button id="reset-progress" class="secondary-button">Reset saved progress</button><p id="reset-status" role="status"></p></dialog>
   <noscript>These activities need JavaScript for the ruler and lessons. Please enable JavaScript in your browser.</noscript>
 </body>
 </html>

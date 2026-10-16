@@ -1,6 +1,7 @@
 import { LESSONS } from './lessons.js';
 import { checkNumber, evaluateWork, evaluateFinal, polygonArea, splitFromCuts, rulerMatchesSide } from './math.js';
 import { mountScratchpad, normalizeStrokes } from './scratchpad.js';
+import { buildGradeSheet, gradeSheetHtml } from './report.js';
 
 const $ = (selector) => document.querySelector(selector);
 const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -11,6 +12,7 @@ const UNIT_SIZE = 28;
 const BOARD_WIDTH = 750;
 const BOARD_HEIGHT = 630;
 const storageKey = 'kid-learning-area-v1';
+const activityTitle = document.title;
 let storageAvailable = true;
 let progress = { current: 0, completed: {}, draft: null };
 try {
@@ -34,7 +36,7 @@ const rulerHeight = () => window.innerWidth <= 680 ? 80 : 44;
 const completeCount = () => Object.keys(progress.completed).length;
 
 function saveProgress() {
-  try { localStorage.setItem(storageKey, JSON.stringify(progress)); }
+  try { localStorage.setItem(storageKey, JSON.stringify(progress)); storageAvailable = true; }
   catch { storageAvailable = false; }
 }
 
@@ -46,7 +48,7 @@ function startLesson(next, focus = false) {
   progress.current = index;
   state = {
     phase: isFinal() ? 'final' : 'split', splitIndex: isRect() ? 0 : -1, drawnLines: [], showChoices: !lesson.independent, customSplit: null, cursor: null, cutStart: null,
-    grid: lesson.grid, counted: new Set(), measuring: 0, supported: isFinal() && progress.draft?.supported === true, hints: 0,
+    grid: lesson.grid, counted: new Set(), measuring: 0, supported: isFinal() && progress.draft?.supported === true, hints: 0, hintUses:0, corrections:0,
     work: { measurements: [], areas: [], total: '', unit: '', reason: -1 },
     ruler: { x: 0, y: 0, vertical: false, value: 2, edge: 0 },
     scratch: {strokes: isFinal() ? normalizeStrokes(progress.draft?.strokes) : [], text: isFinal() && typeof progress.draft?.text === 'string' ? progress.draft.text : ''},
@@ -55,6 +57,8 @@ function startLesson(next, focus = false) {
   const height = Math.max(...lesson.polygon.map(p => p[1]));
   layout = { scale: UNIT_SIZE, x: Math.max(isFinal() ? 75 : 30,(BOARD_WIDTH-(width+RULER_UNITS)*UNIT_SIZE)/2), y: Math.max(isFinal() ? 50 : 30,(BOARD_HEIGHT-(height+RULER_UNITS)*UNIT_SIZE)/2), viewX:0, viewY:0, rulerHeight:rulerHeight() };
   if (isFinal()) {
+    state.hintUses = Number.isInteger(progress.draft?.hints) && progress.draft.hints >= 0 ? progress.draft.hints : 0;
+    state.corrections = Number.isInteger(progress.draft?.corrections) && progress.draft.corrections >= 0 ? progress.draft.corrections : 0;
     state.ruler.y = height+2;
     state.work.total = typeof progress.draft?.total === 'string' ? progress.draft.total : '';
     state.work.unit = typeof progress.draft?.unit === 'string' ? progress.draft.unit : '';
@@ -242,7 +246,7 @@ function renderTask() {
   let html = '';
   if (isFinal()) {
     html = `<h3 id="notebook-title">Show your work.</h3><p class="task-description">Find the total area. Draw or type your calculations, then enter your answer.</p><div id="scratchpad"><div class="scratch-toolbar" role="group" aria-label="Drawing tools"><button type="button" data-scratch-action="pen" aria-pressed="true">Pen</button><button type="button" data-scratch-action="eraser" aria-pressed="false">Eraser</button><button type="button" data-scratch-action="undo">Undo</button><button type="button" data-scratch-action="clear">Clear drawing</button></div><canvas id="scratch-canvas" tabindex="0" aria-label="Scratchpad. Draw your calculations here.">Type your calculations in the work box below.</canvas><label class="field-label scratch-text-label" for="scratch-text">Or type your calculations</label><textarea id="scratch-text" rows="4" spellcheck="false">${escape(state.scratch.text)}</textarea></div>`;
-    if (phase === 'done') html += `<div class="final-result" role="status"><strong>Answer correct: ${state.work.total} ${unit()}</strong><p>Review the written work with a parent or teacher.</p></div><button id="next-lesson" class="primary-button">${completeCount() === LESSONS.length ? 'Practice again' : 'Next lesson'} <span>→</span></button><button id="replay" class="text-button full-width">Clear this problem and start again</button>`;
+    if (phase === 'done') html += `<div class="final-result" role="status"><strong>Answer correct: ${state.work.total} ${unit()}</strong><p>Review the written work with a parent or teacher.</p></div><button id="show-grade-sheet" class="primary-button">View grade sheet</button><button id="next-lesson" class="primary-button">${completeCount() === LESSONS.length ? 'Practice again' : 'Next lesson'} <span>→</span></button><button id="replay" class="text-button full-width">Clear this problem and start again</button>`;
     else html += `<form id="final-form"><label class="field-label" for="final-answer">Final answer</label><div class="final-answer-row"><input id="final-answer" class="answer-input" type="text" inputmode="numeric" autocomplete="off" value="${escape(state.work.total)}" aria-describedby="feedback"><select id="final-unit" class="unit-select" aria-label="Answer units"><option value="">Units</option><option value="${lesson.unit}" ${state.work.unit === lesson.unit ? 'selected' : ''}>${lesson.unit}</option><option value="${unit()}" ${state.work.unit === unit() ? 'selected' : ''}>${unit()}</option></select></div><button class="primary-button" type="submit">Check answer</button></form><p class="saved-note">${storageAvailable ? "Your work is saved on this device." : "Work cannot be saved in this browser. Keep this page open to continue."}</p>`;
     $('#task-panel').innerHTML = html;
     scratchpad = mountScratchpad($('#scratchpad'),{strokes:state.scratch.strokes,onChange(strokes){state.scratch.strokes=strokes;saveFinalDraft();}});
@@ -278,7 +282,7 @@ function renderTask() {
   }
   if (phase === 'done') {
     const allDone = completeCount() === LESSONS.length;
-    html = `${lesson.independent ? `<div class="support-tag">${state.supported ? 'COMPLETED WITH HELP' : 'COMPLETED WITHOUT HELP'}</div>` : ''}<h3 id="notebook-title">${allDone ? 'All lessons complete.' : 'Lesson complete.'}</h3><p class="task-description">${state.supported ? 'You completed this lesson with help or corrections.' : 'Your measurements, calculations, and answer are correct.'}</p><div class="completion-equation">${state.work.areas.join(' + ')}${state.work.areas.length > 1 ? ` = ${state.work.total}` : ''} ${unit()}</div><ul class="completed-checklist"><li>Every part counted once</li><li>Each rectangle’s area found</li><li>A total with square units</li><li>Explanation checked</li></ul><button id="next-lesson" class="primary-button">${allDone ? 'Practice again' : 'Next lesson'} <span>→</span></button><button id="replay" class="text-button full-width">${isRect() ? 'Practice again' : 'Try a different split'}</button><p class="saved-note">${storageAvailable ? 'Your progress is saved on this device.' : 'Progress could not be saved in this browser. You can continue in this session.'}${allDone ? ' Try again another day to see what you remember.' : ''}</p>`;
+    html = `${lesson.independent ? `<div class="support-tag">${state.supported ? 'COMPLETED WITH HELP' : 'COMPLETED WITHOUT HELP'}</div>` : ''}<h3 id="notebook-title">${allDone ? 'All lessons complete.' : 'Lesson complete.'}</h3><p class="task-description">${state.supported ? 'You completed this lesson with help or corrections.' : 'Your measurements, calculations, and answer are correct.'}</p><div class="completion-equation">${state.work.areas.join(' + ')}${state.work.areas.length > 1 ? ` = ${state.work.total}` : ''} ${unit()}</div><ul class="completed-checklist"><li>Every part counted once</li><li>Each rectangle’s area found</li><li>A total with square units</li><li>Explanation checked</li></ul>${allDone ? '<button id="show-grade-sheet" class="primary-button">View grade sheet</button>' : ''}<button id="next-lesson" class="primary-button">${allDone ? 'Practice again' : 'Next lesson'} <span>→</span></button><button id="replay" class="text-button full-width">${isRect() ? 'Practice again' : 'Try a different split'}</button><p class="saved-note">${storageAvailable ? 'Your progress is saved on this device.' : 'Progress could not be saved in this browser. You can continue in this session.'}${allDone ? ' Try again another day to see what you remember.' : ''}</p>`;
   }
   $('#task-panel').innerHTML = html;
 }
@@ -320,21 +324,26 @@ function fitRuler() {
 
 function saveFinalDraft() {
   if (!isFinal()) return;
-  progress.draft = {lessonId:lesson.id,strokes:state.scratch.strokes,text:state.scratch.text,total:state.work.total,unit:state.work.unit,supported:state.supported,cuts:state.drawnLines};
+  progress.draft = {lessonId:lesson.id,strokes:state.scratch.strokes,text:state.scratch.text,total:state.work.total,unit:state.work.unit,supported:state.supported,cuts:state.drawnLines,hints:state.hintUses,corrections:state.corrections};
   saveProgress();
 }
 
 function completeLesson() {
   const previous = progress.completed[lesson.id];
-  progress.completed[lesson.id] = {independent:Boolean(previous?.independent || (lesson.independent && !state.supported)),completedAt:new Date().toISOString(),finalWork:isFinal()};
+  progress.completed[lesson.id] = {
+    independent:Boolean(previous?.independent || (lesson.independent && !state.supported)),completedAt:new Date().toISOString(),finalWork:isFinal(),
+    result:{supported:state.supported,corrections:state.corrections,hints:state.hintUses,total:state.work.total,unit:state.work.unit,areas:[...state.work.areas],
+      final:isFinal() ? {text:state.scratch.text,image:scratchpad.hasInk() ? $('#scratch-canvas').toDataURL('image/png') : null,cuts:structuredClone(state.drawnLines)} : null},
+  };
   saveProgress();
   continuePhase('done');
+  if (completeCount() === LESSONS.length) showGradeSheet();
 }
 
 function showFeedback(message, success = false) {
   $('#feedback').textContent = message;
   $('#feedback').className = success ? 'success' : '';
-  if (!success) {state.supported = true;saveFinalDraft();}
+  if (!success) {state.supported = true;state.corrections++;saveFinalDraft();}
 }
 
 function errorsFor(fields) { return evaluateWork(lesson, split(), state.work).errors.filter(error => fields.includes(error.field)); }
@@ -421,6 +430,7 @@ function scrollToBoard() { $('.drawing-card').scrollIntoView({ behavior: window.
 
 function hint() {
   state.supported = true;
+  state.hintUses++;
   saveFinalDraft();
   state.hints++;
   let text = lesson.tip;
@@ -469,9 +479,12 @@ document.addEventListener('click', event => {
     case 'restart-lesson': case 'replay': if(isFinal()) {progress.draft=null;saveProgress();} startLesson(index); break;
     case 'next-lesson': { const next = completeCount() === LESSONS.length ? 9 : index < LESSONS.length - 1 ? index + 1 : LESSONS.findIndex(item => !progress.completed[item.id]); startLesson(Math.max(0,next), true); $('#workspace').scrollIntoView({ behavior: 'smooth', block: 'start' }); break; }
     case 'grownups': renderParent(); $('#parent-dialog').showModal(); break;
+    case 'view-grade-sheet': case 'show-grade-sheet': showGradeSheet(); break;
+    case 'close-grade-sheet': hideGradeSheet(); break;
+    case 'print-grade-sheet': window.print(); break;
     case 'reset-progress':
-      if (button.dataset.confirm !== 'true') { button.dataset.confirm = 'true'; button.textContent = 'Yes, reset all saved progress'; $('#reset-status').textContent = 'This clears this browser’s lesson completions. Click again to confirm.'; }
-      else { progress = { current: 0, completed: {} }; saveProgress(); startLesson(0); renderParent(); button.textContent = 'Reset saved progress'; delete button.dataset.confirm; $('#reset-status').textContent = 'Saved progress reset.'; }
+      if (button.dataset.confirm !== 'true') { button.dataset.confirm = 'true'; button.textContent = 'Yes, reset all saved progress'; $('#reset-status').textContent = 'This clears saved progress, grade-sheet results, and final written work on this device. Click again to confirm.'; }
+      else { progress = { current: 0, completed: {} }; saveProgress(); hideGradeSheet(false); startLesson(0); renderParent(); button.textContent = 'Reset saved progress'; delete button.dataset.confirm; $('#reset-status').textContent = storageAvailable ? 'Saved progress reset.' : 'Progress cleared for this session. Saved progress could not be removed; it may return after reloading.'; }
       break;
   }
 });
@@ -488,10 +501,35 @@ $('.dialog-close').addEventListener('click', () => $('#parent-dialog').close());
 $('#parent-dialog').addEventListener('close', () => { $('#reset-progress').textContent = 'Reset saved progress'; delete $('#reset-progress').dataset.confirm; $('#reset-status').textContent = ''; });
 
 function renderParent() {
-  const independentLessons = LESSONS.filter(item => item.independent);
-  const independent = independentLessons.filter(item => progress.completed[item.id]?.independent).length;
-  $('#parent-progress').innerHTML = `<div class="progress-report"><p><strong>${completeCount()} of ${LESSONS.length} lessons complete</strong></p><p>${independent} of ${independentLessons.length} independent problems completed without help.</p><p>${storageAvailable ? 'Lesson completions and the final problem’s scratchpad are saved on this device. Other unfinished lessons start fresh.' : 'Browser storage is unavailable. Progress lasts for this session only.'}</p></div>`;
+  const {summary} = buildGradeSheet(LESSONS,progress.completed);
+  $('#parent-progress').innerHTML = `<div class="progress-report"><p><strong>${summary.completed} of ${summary.total} lessons complete</strong></p><p>${summary.independentWithoutHelp} of ${summary.independentTotal} independent problems completed without in-app help in the latest recorded attempts.${summary.unknownLegacyIndependent ? ' Some earlier results do not record help usage.' : ''}</p><p>${storageAvailable ? 'Progress, grade-sheet results, and final work are saved on this device. Other unfinished lessons start fresh.' : 'Browser storage is unavailable. Results last for this session only; print the grade sheet to keep a copy.'}</p></div>`;
 }
+
+function renderGradeSheet() {
+  $('#grade-sheet').innerHTML = gradeSheetHtml(LESSONS,progress.completed);
+  const note = document.createElement('p');
+  note.className = 'grade-save-status';
+  note.textContent = storageAvailable ? 'Saved on this device. Print or save a PDF to keep a copy.' : 'These results are available only while this page is open. Print or save a PDF before closing it.';
+  $('#grade-sheet').append(note);
+}
+
+function showGradeSheet() {
+  renderGradeSheet();
+  $('#activity-shell').hidden = true;
+  $('#grade-sheet').hidden = false;
+  document.title = 'Grade sheet · Third grade area · Kid Learning';
+  $('#grade-sheet-title').focus();
+  window.scrollTo(0,0);
+}
+
+function hideGradeSheet(focus = true) {
+  $('#grade-sheet').hidden = true;
+  $('#activity-shell').hidden = false;
+  document.title = activityTitle;
+  if (focus) $('#view-grade-sheet').focus({preventScroll:true});
+}
+
+window.addEventListener('beforeprint',renderGradeSheet);
 
 function eventPoint(event) {
   const point = new DOMPoint(event.clientX,event.clientY).matrixTransform(board.getScreenCTM().inverse());
