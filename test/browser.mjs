@@ -119,15 +119,38 @@ async function finishCalculations(page, lesson, plan) {
   assert.equal(await page.locator('#next-lesson').count(), 1, `Completed ${lesson.id}`);
 }
 
+async function rulerDimensions(page) {
+  return page.locator('[data-ruler]').evaluate(ruler => ({
+    width: Number(ruler.querySelectorAll('[data-ruler-bar]')[1].getAttribute('width')),
+    height: Number(ruler.querySelectorAll('[data-ruler-bar]')[1].getAttribute('height')),
+    ticks: [...ruler.querySelectorAll('[data-tick] text')].map(tick => Number(tick.getAttribute('x'))),
+    screenLength: Number((Math.hypot(ruler.getScreenCTM().a,ruler.getScreenCTM().b)*Number(ruler.querySelectorAll('[data-ruler-bar]')[1].getAttribute('width'))).toFixed(3)),
+  }));
+}
+
+async function canvasHasInk(page) {
+  return page.locator('#scratch-canvas').evaluate(canvas => canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data.some((value,index) => index%4 === 3 && value > 0));
+}
+
+async function drawOnScratchpad(page, touch = false) {
+  await page.locator('#scratch-canvas').scrollIntoViewIfNeeded();
+  const box = await page.locator('#scratch-canvas').boundingBox();
+  await (touch ? touchDrag : dragBetween)(page,{x:box.x+30,y:box.y+40},{x:box.x+150,y:box.y+100});
+  assert.equal(await canvasHasInk(page),true,'Scratchpad drawing leaves visible ink');
+}
+
 try {
   if (!process.env.MOBILE_ONLY) {
   await page.goto(url);
-  assert.match(await page.title(), /Area Workshop/);
+  assert.match(await page.title(), /Area practice/);
   await page.locator('[data-cell="0-0"]').click();
   assert.match(await page.locator('#board-caption').textContent(), /1 square marked/);
   await page.locator('[data-cell="0-0"]').click();
   await page.screenshot({ path: 'test-results/desktop-explore.png', fullPage: true });
   await page.locator('#begin-measuring').click();
+  const fixedRuler = await rulerDimensions(page);
+  assert.equal(fixedRuler.width,448);
+  assert.deepEqual(fixedRuler.ticks,Array.from({length:16},(_,i) => i*28));
   assert.match(await page.locator('#board-desc').textContent(), /from \(0, 3\) to \(4, 3\)/);
   assert.match(await page.locator('[data-drag="zero"]').getAttribute('aria-label'), /Zero at 0 across/);
   await page.locator('#length-answer').fill('4');
@@ -135,12 +158,15 @@ try {
   assert.match(await page.locator('#feedback').textContent(), /First line up/);
   await page.locator('#align-ruler').click();
   await page.locator('#longer').click({ clickCount: 2 });
+  assert.deepEqual(await rulerDimensions(page),fixedRuler,'Moving the marker leaves ruler dimensions unchanged');
   await page.locator('#length-answer').fill('5');
   await page.locator('#measurement-form button').click();
   assert.match(await page.locator('#feedback').textContent(), /Write that number/);
   await page.locator('#length-answer').fill('4');
   await page.locator('#measurement-form button').click();
   await page.locator('#rotate-ruler').click();
+  assert.deepEqual(await rulerDimensions(page),fixedRuler,'Rotation leaves ruler dimensions unchanged');
+  assert.match(await page.locator('#rotate-ruler').textContent(),/Rotate horizontal/);
   await page.locator('[data-drag="zero"]').focus();
   await page.keyboard.press('ArrowUp'); await page.keyboard.press('ArrowUp');
   await page.locator('[data-drag="marker"]').focus(); await page.keyboard.press('ArrowRight');
@@ -166,6 +192,24 @@ try {
   for (let i = 1; i < LESSONS.length; i++) {
     const lesson = LESSONS[i];
     await page.locator(`[data-lesson="${i}"]`).click();
+    if (lesson.final) {
+      assert.equal(await page.locator('#stepper').isVisible(),false);
+      assert.equal(await page.locator('#area-form, #total-form, #reason-form, .equation, .sum-block').count(),0,'Final problem has no filled-in calculations');
+      assert.equal(await page.locator('#scratch-text').inputValue(),'');
+      assert.equal(await canvasHasInk(page),false);
+      assert.deepEqual(await rulerDimensions(page),fixedRuler,'Final ruler has the same fixed dimensions');
+      await page.screenshot({path:'test-results/final-blank.png',fullPage:true});
+      await page.locator('#scratch-text').fill('4 × 3 = 12\n12 × 5 = 60\n12 + 60 = 72 square feet');
+      await page.locator('#final-answer').fill('72');
+      await page.locator('#final-unit').selectOption('ft²');
+      await page.reload();
+      assert.match(await page.locator('#scratch-text').inputValue(),/12 \+ 60 = 72/);
+      assert.equal(await page.locator('#final-answer').inputValue(),'72');
+      await page.locator('#final-form button').click();
+      assert.match(await page.locator('.final-result').textContent(),/Answer correct: 72 ft²/);
+      console.log('PASS: independent final problem, blank work area, saved calculations, answer and units');
+      continue;
+    }
     let plan = lesson.splits[i % lesson.splits.length];
     if (lesson.polygon.length > 4) {
       if (i === 7) {
@@ -178,15 +222,16 @@ try {
       } else await page.locator(`[data-split="${i % lesson.splits.length}"]`).click();
     }
     await page.locator('#begin-measuring').click();
+    assert.deepEqual(await rulerDimensions(page),fixedRuler,`Fixed ruler in lesson ${i+1}`);
     if (i === 3) await page.screenshot({ path: 'test-results/composite-measure.png', fullPage: true });
     for (const rect of plan.rects) for (const axis of ['w','h']) await measureSide(page,lesson,rect,axis);
     await finishCalculations(page,lesson,plan);
-    if (lesson.independent) assert.equal(await page.locator('.support-tag').textContent(), 'SOLVED ON MY OWN');
+    if (lesson.independent) assert.equal(await page.locator('.support-tag').textContent(), 'COMPLETED WITHOUT HELP');
     console.log(`PASS: complete lesson ${i+1}, ${lesson.title}, with dragged measurements`);
   }
   assert.match(await page.locator('#progress-text').textContent(), /12 of 12/);
   await page.locator('#grownups').click();
-  assert.match(await page.locator('#parent-progress').textContent(), /3 of 3 final challenges solved on their own/);
+  assert.match(await page.locator('#parent-progress').textContent(), /3 of 3 independent problems completed without help/);
   await page.locator('.dialog-close').click();
   await page.screenshot({ path: 'test-results/completed.png', fullPage: true });
 
@@ -200,6 +245,53 @@ try {
   await page.keyboard.press('Enter');
   assert.equal(await page.locator('#begin-measuring').isEnabled(),true);
   console.log('PASS: keyboard-only independent cut');
+
+  const assessment = await browser.newContext({viewport:{width:1440,height:1050}});
+  const finalPage = await assessment.newPage();
+  activePage = finalPage;
+  await finalPage.goto(url);
+  await finalPage.locator('[data-lesson="11"]').click();
+  await finalPage.locator('#final-answer').fill('72');
+  await finalPage.locator('#final-unit').selectOption('ft²');
+  await finalPage.locator('#final-form button').click();
+  assert.match(await finalPage.locator('#feedback').textContent(),/calculations/);
+  await drawOnScratchpad(finalPage);
+  await finalPage.locator('[data-scratch-action="eraser"]').click();
+  const canvasBox = await finalPage.locator('#scratch-canvas').boundingBox();
+  await dragBetween(finalPage,{x:canvasBox.x+30,y:canvasBox.y+40},{x:canvasBox.x+150,y:canvasBox.y+100});
+  assert.equal(await canvasHasInk(finalPage),false,'Eraser removes ink');
+  await finalPage.locator('[data-scratch-action="undo"]').click();
+  assert.equal(await canvasHasInk(finalPage),true,'Undo restores erased ink');
+  await finalPage.setViewportSize({width:900,height:1000});
+  assert.equal(await canvasHasInk(finalPage),true,'Drawing survives canvas resize');
+  await finalPage.reload();
+  assert.equal(await canvasHasInk(finalPage),true,'Drawing survives reload');
+  await finalPage.locator('#board').scrollIntoViewIfNeeded();
+  await dragBetween(finalPage,await screenPoint(finalPage,LESSONS[11],[4,3]),await screenPoint(finalPage,LESSONS[11],[8,3]));
+  await finalPage.waitForFunction(() => document.querySelectorAll('.piece-label').length === 2);
+  assert.equal(await finalPage.locator('.piece-label').count(),2,'Final problem accepts an optional split');
+  await finalPage.reload();
+  assert.equal(await finalPage.locator('.piece-label').count(),2,'Final split survives reload');
+  assert.equal(await canvasHasInk(finalPage),true,'Splitting leaves scratchpad work intact');
+  await finalPage.locator('#final-answer').fill('70');
+  await finalPage.locator('#final-form button').click();
+  assert.match(await finalPage.locator('#feedback').textContent(),/add the areas/);
+  await finalPage.locator('#final-answer').fill('72');
+  await finalPage.locator('#final-unit').selectOption('ft');
+  await finalPage.locator('#final-form button').click();
+  assert.match(await finalPage.locator('#feedback').textContent(),/square units/);
+  await finalPage.locator('#final-unit').selectOption('ft²');
+  await finalPage.locator('#final-form button').click();
+  assert.match(await finalPage.locator('.final-result').textContent(),/Answer correct/);
+  await finalPage.locator('#grownups').click();
+  assert.match(await finalPage.locator('#parent-progress').textContent(),/0 of 3 independent problems completed without help/);
+  await finalPage.locator('.dialog-close').click();
+  await finalPage.locator('#replay').click();
+  assert.equal(await canvasHasInk(finalPage),false);
+  assert.equal(await finalPage.locator('#final-answer').inputValue(),'');
+  console.log('PASS: final work required, eraser, undo, resize, reload, incorrect totals/units, and restart');
+  await assessment.close();
+  activePage = page;
   }
 
   if (!process.env.DESKTOP_ONLY) {
@@ -223,19 +315,47 @@ try {
   await mobile.screenshot({ path: 'test-results/mobile-measure.png', fullPage: true });
   for (const [i,rect] of LESSONS[10].splits[0].rects.entries()) for (const axis of ['w','h']) await measureSide(mobile,LESSONS[10],rect,axis,{manual:i === 0,touch:true});
   await finishCalculations(mobile,LESSONS[10],LESSONS[10].splits[0]);
-  assert.equal(await mobile.locator('.support-tag').textContent(),'COMPLETED WITH PRACTICE');
+  assert.equal(await mobile.locator('.support-tag').textContent(),'COMPLETED WITH HELP');
   assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),true,'No mobile horizontal page overflow');
   await mobile.reload();
   assert.match(await mobile.locator('#progress-text').textContent(), /1 of 12/);
   await touchTap(mobile,mobile.locator('#grownups'));
-  assert.match(await mobile.locator('#parent-progress').textContent(), /0 of 3 final challenges solved on their own/);
+  assert.match(await mobile.locator('#parent-progress').textContent(), /0 of 3 independent problems completed without help/);
   await touchTap(mobile,mobile.locator('#reset-progress'));
   await touchTap(mobile,mobile.locator('#reset-progress'));
   await touchTap(mobile,mobile.locator('.dialog-close'));
   assert.match(await mobile.locator('#progress-text').textContent(), /0 of 12/);
+  const countTarget = mobile.locator('[data-count-cell="0-0"]');
+  const countBox = await countTarget.boundingBox();
+  assert.ok(countBox.width >= 44 && countBox.height >= 44,'Phone counting alternative has full-size tap targets');
+  await touchTap(mobile,countTarget);
+  assert.equal(await mobile.locator('[data-count-cell="0-0"]').getAttribute('aria-pressed'),'true');
   await touchTap(mobile,mobile.locator('[data-cell="0-0"]'));
   await touchTap(mobile,mobile.locator('#begin-measuring'));
   assert.match(await mobile.locator('#notebook-title').textContent(),/Measure the width/);
+  await touchTap(mobile,mobile.locator('[data-lesson="11"]'));
+  const label = await mobile.locator('.final-dimension').first().evaluate(el => parseFloat(getComputedStyle(el).fontSize)*el.getScreenCTM().a);
+  assert.ok(label >= 13,'Phone final dimension labels are readable');
+  const dimensionBoxes = await mobile.locator('.final-dimension').evaluateAll(els => els.map(el => {const r=el.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom};}));
+  const diagramBox = await mobile.locator('#board').boundingBox();
+  for (const [i,a] of dimensionBoxes.entries()) {
+    assert.ok(a.x >= diagramBox.x && a.right <= diagramBox.x+diagramBox.width,'Final labels fit within the phone diagram');
+    for (const b of dimensionBoxes.slice(i+1)) assert.ok(a.right<=b.x || b.right<=a.x || a.bottom<=b.y || b.bottom<=a.y,'Final dimension labels do not overlap');
+  }
+  await drawOnScratchpad(mobile,true);
+  await touchTap(mobile,mobile.locator('[data-scratch-action="clear"]'));
+  assert.equal(await canvasHasInk(mobile),false,'Touch clear removes drawing');
+  await drawOnScratchpad(mobile,true);
+  await mobile.reload();
+  assert.equal(await canvasHasInk(mobile),true);
+  await mobile.screenshot({path:'test-results/mobile-final.png',fullPage:true});
+  await touchTap(mobile,mobile.locator('#final-answer'));
+  await mobile.locator('#final-answer').fill('72');
+  await mobile.locator('#final-unit').selectOption('ft²');
+  await touchTap(mobile,mobile.locator('#final-form button'));
+  assert.match(await mobile.locator('.final-result').textContent(),/Answer correct: 72 ft²/);
+  assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),true,'Final mobile page fits viewport');
+  console.log('PASS: native touch scratchpad drawing, clear, restored work, and final submission');
   await touchTap(mobile,mobile.locator('[data-lesson="3"]'));
   await mobile.locator('#board').scrollIntoViewIfNeeded();
   await touchDrag(mobile,await screenPoint(mobile,LESSONS[3],[4,2]),await screenPoint(mobile,LESSONS[3],[4,5]));
@@ -248,7 +368,7 @@ try {
   await blockedContext.addInitScript(() => { Object.defineProperty(window,'localStorage',{ get() { throw new DOMException('Unavailable','SecurityError'); } }); });
   const blocked = await blockedContext.newPage();
   await blocked.goto(url);
-  assert.match(await blocked.locator('#notebook-title').textContent(), /Meet a square/);
+  assert.match(await blocked.locator('#notebook-title').textContent(), /Count square units/);
   await blocked.locator('#grownups').click();
   assert.match(await blocked.locator('#parent-progress').textContent(), /storage is unavailable/);
   console.log('PASS: app remains usable when browser storage is unavailable');

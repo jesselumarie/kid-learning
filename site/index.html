@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f6f4ec">
-  <meta name="description" content="A hands-on area workshop. Move a ruler, measure shapes, split them into rectangles, and figure out the space inside.">
-  <title>Area Workshop · Kid Learning</title>
+  <meta name="description" content="Practice area by measuring shapes, splitting them into rectangles, and adding their areas.">
+  <title>Area practice · Kid Learning</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./app.js"></script>
@@ -13,37 +13,34 @@
 <body>
   <a class="skip-link" href="#workspace">Skip to the activity</a>
   <header class="site-header">
-    <a class="brand" href="./" aria-label="Kid Learning home"><svg viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="14" height="14" rx="3" fill="#32766c"/><rect x="19" y="1" width="14" height="14" rx="3" fill="#efb84c"/><rect x="1" y="19" width="14" height="14" rx="3" fill="#e68770"/><rect x="19" y="19" width="14" height="14" rx="3" fill="#e8e8dc"/></svg>kid learning<span class="brand-dot">.</span></a>
-    <div class="header-label">A little practice. A big discovery.</div>
-    <button class="text-button" id="grownups">For grown-ups <span aria-hidden="true">↗</span></button>
+    <a class="brand" href="./" aria-label="Kid Learning home"><svg viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="14" height="14" rx="3" fill="#32766c"/><rect x="19" y="1" width="14" height="14" rx="3" fill="#efb84c"/><rect x="1" y="19" width="14" height="14" rx="3" fill="#e68770"/><rect x="19" y="19" width="14" height="14" rx="3" fill="#e8e8dc"/></svg>Kid Learning</a>
+    <button class="text-button" id="grownups">For parents <span aria-hidden="true">↗</span></button>
   </header>
   <div class="app-shell">
-    <aside class="journey" aria-label="Learning path">
-      <div class="eyebrow">YOUR WORKSHOP</div>
-      <h1>Making<br>sense of <span>area.</span></h1>
-      <p class="journey-intro">Measure the sides.<br>Find the space inside.</p>
-      <div class="journey-progress"><div><strong id="progress-text">0 of 12 explored</strong><span id="progress-percent">0%</span></div><div class="progress-track"><div id="progress-fill"></div></div></div>
+    <aside class="journey" aria-label="Lessons">
+      <div class="eyebrow">MATH</div>
+      <h1>Area <span>practice</span></h1>
+      <p class="journey-intro">Find the area of rectangles and shapes made from rectangles.</p>
+      <div class="journey-progress"><div><strong id="progress-text">0 of 12 complete</strong><span id="progress-percent">0%</span></div><div class="progress-track"><div id="progress-fill"></div></div></div>
       <nav id="lesson-nav" aria-label="Choose a lesson"></nav>
-      <div class="rail-note"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3v6M16 23v6M3 16h6M23 16h6M7 7l4 4M21 21l4 4M7 25l4-4M21 11l4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg><p>No rush. No scores.<br>Just you, figuring it out.</p></div>
     </aside>
     <main id="workspace" tabindex="-1">
       <div class="lesson-heading"><div><div class="eyebrow" id="lesson-meta"></div><h2 id="lesson-title"></h2><p id="lesson-story"></p></div><span class="lesson-badge" id="lesson-badge"></span></div>
       <ol class="stepper" aria-label="Activity steps" id="stepper"></ol>
       <div class="workbench">
         <section class="drawing-card" aria-label="Shape and ruler workspace">
-          <div class="board-header"><span><i class="live-dot"></i> THE EXPLORING TABLE</span><button class="chip" id="grid-toggle" aria-pressed="true">▦ <span>Grid on</span></button></div>
-          <div class="board-wrap"><svg id="board" viewBox="0 0 720 490" tabindex="0" role="group" aria-labelledby="board-title board-desc"><title id="board-title">Interactive shape workspace</title><desc id="board-desc">Use the ruler to measure the highlighted side.</desc></svg></div>
+          <div class="board-header"><span><i class="live-dot"></i> SHAPE</span><button class="chip" id="grid-toggle" aria-pressed="true">▦ <span>Grid on</span></button></div>
+          <div class="board-wrap"><svg id="board" viewBox="0 0 900 760" tabindex="0" role="group" aria-labelledby="board-title board-desc"><title id="board-title">Interactive shape workspace</title><desc id="board-desc">Use the ruler to measure the highlighted side.</desc></svg></div>
           <div id="board-caption" class="board-caption" aria-live="polite"></div>
           <div class="toolbox" id="toolbox"></div>
-          <div class="model-note">A model ruler: each tick is 1 <span id="model-unit">cm</span> in this drawing.</div>
+          <div class="model-note">Each space between ruler marks is 1 <span id="model-unit">cm</span> in the drawing.</div>
         </section>
-        <section class="notebook" aria-labelledby="notebook-title"><div class="notebook-label"><span class="notebook-icon" aria-hidden="true">▤</span> MY FIELD NOTES <span id="note-count"></span></div><div id="task-panel"></div><div id="feedback" role="status" aria-live="polite"></div><div class="hint-wrap"><button id="hint-button" class="text-button">✧ Give me a little hint</button><p id="hint-text" role="status" aria-live="polite"></p></div></section>
+        <section class="notebook" aria-labelledby="notebook-title"><div class="notebook-label"><span class="notebook-icon" aria-hidden="true">▤</span> YOUR WORK <span id="note-count"></span></div><div id="task-panel"></div><div id="feedback" role="status" aria-live="polite"></div><div class="hint-wrap"><button id="hint-button" class="text-button">Show a hint</button><p id="hint-text" role="status" aria-live="polite"></p></div></section>
       </div>
       <div class="bottom-note"><span aria-hidden="true">↳</span><p id="big-idea">Area is the space a shape covers. We measure it in square units.</p><button class="text-button" id="restart-lesson">Start this lesson again</button></div>
     </main>
   </div>
-  <footer class="site-footer"><span>KID LEARNING / THE AREA WORKSHOP</span><span>Made for small steps &amp; big “aha!” moments.</span></footer>
-  <dialog id="parent-dialog"><button class="dialog-close" aria-label="Close grown-up guide">×</button><div class="eyebrow">A NOTE FOR GROWN-UPS</div><h2>Let the thinking<br>take its time.</h2><p>This workshop builds from unit squares to finding the area of a shape made from several rectangles. Each lesson follows the same routine: split, measure, multiply, add, and explain.</p><ul><li><strong>Ask “Which rectangle does that side belong to?”</strong> It helps prevent using the whole shape’s length for a smaller piece.</li><li><strong>Look for gaps and overlaps.</strong> Every square inside the shape should belong to exactly one piece.</li><li><strong>Finish the thought.</strong> Add all the piece areas and label the answer with square units.</li></ul><p>The last three lessons reduce the help. An “on my own” check means it was completed without hints, grid help, ruler alignment help, or corrections. A revisit on another day is useful evidence that the idea has stuck.</p><div id="parent-progress"></div><p class="small-print">Progress stays in this browser on this device. No accounts, ads, tracking, or uploaded work. The ruler uses model units; it is not a physical screen ruler.</p><button id="reset-progress" class="secondary-button">Reset saved progress</button><p id="reset-status" role="status"></p></dialog>
-  <noscript>This workshop needs JavaScript for the interactive ruler and lessons. Please enable JavaScript in your browser.</noscript>
+  <dialog id="parent-dialog"><button class="dialog-close" aria-label="Close parent guide">×</button><div class="eyebrow">FOR PARENTS</div><h2>How to help</h2><p>The lessons start with counting unit squares and build to finding the area of shapes made from several rectangles. Your child will split shapes, measure sides, multiply, and add.</p><ul><li><strong>Check each rectangle’s measurements.</strong> Ask “Which rectangle does that side belong to?” A smaller piece may not use the whole shape’s length.</li><li><strong>Check for gaps and overlaps.</strong> Every square inside the shape should belong to exactly one piece.</li><li><strong>Check the final answer.</strong> It should include every rectangle’s area and use square units.</li></ul><p>Later lessons start with the grid off. “Completed without help” means no hints, grid help, ruler alignment help, or corrections were used. Try a problem again another day to check what your child remembers.</p><p>The final problem has a blank scratchpad and a separate answer field. Your child can draw or type calculations. The app checks the final number and units; please review the written work yourself.</p><div id="parent-progress"></div><p class="small-print">Progress stays in this browser on this device. No accounts, ads, tracking, or uploaded work. The ruler uses model units; it is not a physical screen ruler.</p><button id="reset-progress" class="secondary-button">Reset saved progress</button><p id="reset-status" role="status"></p></dialog>
+  <noscript>These activities need JavaScript for the ruler and lessons. Please enable JavaScript in your browser.</noscript>
 </body>
 </html>

@@ -22,6 +22,14 @@ export function checkNumber(raw, expected) {
     && Number.isFinite(Number(value)) && Number(value) === expected;
 }
 
+export function evaluateFinal(lesson, work) {
+  const errors = [];
+  if (!work.hasWork) errors.push({field: 'work', message: 'Draw or type your calculations in the scratchpad first.'});
+  if (!checkNumber(work.total,polygonArea(lesson.polygon))) errors.push({field: 'total', message: 'Check the area of each rectangle, then add the areas.'});
+  if (work.unit !== `${lesson.unit}²`) errors.push({field: 'unit', message: 'Area uses square units.'});
+  return {correct: errors.length === 0, errors};
+}
+
 function pointInside(polygon, x, y) {
   let inside = false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
