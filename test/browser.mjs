@@ -48,7 +48,10 @@ async function measureSide(page, lesson, rect, axis, { manual = true, touch = fa
   const a = axis === 'w' ? [rect.x,rect.y+rect.h] : [rect.x,rect.y];
   const b = axis === 'w' ? [rect.x+rect.w,rect.y+rect.h] : [rect.x,rect.y+rect.h];
   if (manual) {
-    if (axis === 'h') await page.locator('#rotate-ruler').click();
+    if (axis === 'h') {
+      if (touch) await page.locator('#rotate-ruler').tap(); else await page.locator('#rotate-ruler').click();
+      await page.waitForFunction(() => document.querySelector('[data-drag="marker"]').getAttribute('aria-orientation') === 'vertical');
+    }
     await page.locator('#board').scrollIntoViewIfNeeded();
     const box = await page.locator('[data-drag="zero"] circle:last-child').boundingBox();
     const move = touch ? touchDrag : dragBetween;
@@ -58,14 +61,23 @@ async function measureSide(page, lesson, rect, axis, { manual = true, touch = fa
     await move(page,marker,end);
   } else {
     if (touch) await page.locator('#align-ruler').tap(); else await page.locator('#align-ruler').click();
+    try {
+      await page.waitForFunction(({ x,y }) => document.querySelector('[data-drag="zero"]').getAttribute('aria-label').includes(`Zero at ${x} across, ${y} down.`), { x:a[0], y:a[1] }, { timeout: 3000 });
+    } catch (error) {
+      console.log('Alignment activation events:',await page.evaluate(() => window.touchTrace));
+      await page.screenshot({ path: 'test-results/alignment-failure.png', fullPage: true });
+      throw error;
+    }
     while (Number((await page.locator('#ruler-value').textContent()).split(' ')[0]) !== value) {
       const current = Number((await page.locator('#ruler-value').textContent()).split(' ')[0]);
       const control = page.locator(current < value ? '#longer' : '#shorter');
       if (touch) await control.tap(); else await control.click();
+      await page.waitForFunction(expected => Number(document.querySelector('#ruler-value').textContent.split(' ')[0]) === expected, current + (current < value ? 1 : -1));
     }
   }
   await page.locator('#length-answer').fill(String(value));
-  await page.locator('#measurement-form button').click();
+  if (touch) await page.locator('#measurement-form button').tap(); else await page.locator('#measurement-form button').click();
+  await page.waitForFunction(() => !document.querySelector('#length-answer') || document.querySelector('#length-answer').value === '' || document.querySelector('#feedback').textContent !== '');
   const feedback = await page.locator('#feedback').textContent();
   if (feedback) {
     await page.screenshot({ path: 'test-results/measurement-failure.png', fullPage: true });
@@ -171,6 +183,13 @@ try {
   const mobile = await mobileContext.newPage();
   mobile.on('pageerror', error => failures.push(error.message));
   await mobile.goto(url);
+  await mobile.evaluate(() => {
+    window.touchTrace = [];
+    for (const type of ['touchstart','touchend','pointercancel','click']) document.addEventListener(type,event => {
+      window.touchTrace.push({ type, target: event.target.closest('button')?.id || event.target.tagName, time: Math.round(performance.now()), scrollY });
+      if (window.touchTrace.length > 40) window.touchTrace.shift();
+    },true);
+  });
   await mobile.locator('[data-lesson="10"]').tap();
   await mobile.locator('#show-splits').tap();
   await mobile.locator('[data-split="0"]').tap();
